@@ -1,0 +1,3275 @@
+<!--
+================================================================================
+  NSM SURVEY — "Selecting the North Star"
+  A Mixed-Methods Decision Framework for Growth Hacking Metric Selection
+
+  Authors : Arman Karimian (University of Turin)
+            Ali Vaezi (Politecnico di Torino)
+  Supervisor: Prof. Gabriele Santoro (University of Turin)
+
+  ── SETUP (2 values to change) ──────────────────────────────────────────────
+  1. Open this file and find the CONFIG block near the top of <script>.
+  2. Replace SUPABASE_URL with your project URL from the Supabase dashboard.
+  3. Replace SUPABASE_ANON_KEY with the anon/public key from the same page.
+
+  ── SUPABASE TABLE (run once in the SQL Editor) ─────────────────────────────
+  create table survey_responses (
+    id uuid default gen_random_uuid() primary key,
+    submitted_at timestamptz default now(),
+    role text, experience_years text, industry text, region text,
+    lifecycle_stage text, funding_raised text, employee_count text,
+    b1_primary_metric int, b2_nsm_familiarity text, b3_nsm_defined int,
+    b4_nsm_revised int, b5_okr_familiarity text, b6_okr_use int,
+    b7_experiments int, b8_data_driven int, b9_nsm_name text,
+    c1_value_alignment int, c2_measurability int, c3_actionability int,
+    c4_predictive_power int, c5_team_alignment int, c6_gaming_resistance int,
+    c7_experiment_sensitivity int, c8_strategic_fit int,
+    d1_best_criterion text, d2_worst_criterion text,
+    d3_best_to_others jsonb, d4_others_to_worst jsonb,
+    e_metric_ratings jsonb, e1_other_metric text,
+    f1_selection_method text, f2_changed_nsm text,
+    f2a_change_reason text, f3_comments text
+  );
+
+  ── DEPLOY TO VERCEL ─────────────────────────────────────────────────────────
+  a) Push this file (index.html) to a GitHub repository.
+  b) Go to vercel.com → New Project → Import the GitHub repo.
+  c) Leave all settings at default → click Deploy.
+  d) No build command or output directory needed — Vercel serves index.html directly.
+
+  ── EXPORT RESPONSES ─────────────────────────────────────────────────────────
+  In the Supabase Dashboard → Table Editor → survey_responses → Export → CSV.
+  Or via API:
+    curl "https://<YOUR_URL>/rest/v1/survey_responses?select=*" \
+      -H "apikey: <ANON_KEY>" -H "Authorization: Bearer <ANON_KEY>" > responses.csv
+  Load in Python : pd.read_csv('responses.csv')
+  Load in R      : read.csv('responses.csv')
+================================================================================
+-->
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Selecting the North Star — NSM Research Survey</title>
+  <meta name="description" content="Academic survey on how growth-oriented organizations select their North Star Metric. University of Turin & Politecnico di Torino." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+
+<style>
+/* ============================================================
+   NSM SURVEY — STYLESHEET
+   Authors: Arman Karimian, Ali Vaezi
+   ============================================================ */
+
+/* ── 1. GOOGLE FONTS (already loaded via <link> above) ───── */
+
+/* ── 2. CUSTOM PROPERTIES — LIGHT MODE ───────────────────── */
+:root {
+  /* Colors */
+  --color-bg:             #f8f7f4;
+  --color-surface:        #f0efeb;
+  --color-surface-2:      #ffffff;
+  --color-border:         rgba(0, 0, 0, 0.10);
+  --color-border-strong:  rgba(0, 0, 0, 0.18);
+  --color-text:           #1a1a1a;
+  --color-text-muted:     #5e5e5e;
+  --color-text-faint:     #9e9e9e;
+  --color-accent:         #007A7C;
+  --color-accent-light:   rgba(0, 122, 124, 0.08);
+  --color-accent-hover:   #006365;
+  --color-error:          #b03020;
+  --color-error-light:    rgba(176, 48, 32, 0.07);
+  --color-success:        #1e7d46;
+
+  /* Typography */
+  --font-serif:     'Instrument Serif', Georgia, serif;
+  --font-sans:      'Inter', system-ui, -apple-system, sans-serif;
+  --text-xs:        0.75rem;
+  --text-sm:        0.875rem;
+  --text-base:      1rem;
+  --text-lg:        1.125rem;
+  --text-xl:        1.25rem;
+  --text-2xl:       1.5rem;
+  --text-3xl:       2rem;
+  --text-4xl:       2.75rem;
+  --leading-tight:  1.2;
+  --leading-normal: 1.65;
+
+  /* Spacing */
+  --space-1:   0.25rem;
+  --space-2:   0.5rem;
+  --space-3:   0.75rem;
+  --space-4:   1rem;
+  --space-5:   1.25rem;
+  --space-6:   1.5rem;
+  --space-8:   2rem;
+  --space-10:  2.5rem;
+  --space-12:  3rem;
+  --space-16:  4rem;
+
+  /* Borders & Shadows */
+  --radius-sm:   6px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-full: 9999px;
+  --shadow-sm:   0 1px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md:   0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lg:   0 8px 32px rgba(0, 0, 0, 0.10);
+
+  /* Layout */
+  --max-width:   720px;
+  --header-h:    60px;
+
+  /* Transitions */
+  --dur-fast:   150ms;
+  --dur-normal: 250ms;
+  --dur-slow:   380ms;
+  --ease-out:   cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-inout: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── 3. DARK MODE OVERRIDES ───────────────────────────────── */
+[data-theme="dark"] {
+  --color-bg:             #121211;
+  --color-surface:        #1e1d1b;
+  --color-surface-2:      #262523;
+  --color-border:         rgba(255, 255, 255, 0.10);
+  --color-border-strong:  rgba(255, 255, 255, 0.20);
+  --color-text:           #e8e6e1;
+  --color-text-muted:     #a09e99;
+  --color-text-faint:     #6e6b65;
+  --color-accent:         #1a9a9c;
+  --color-accent-light:   rgba(26, 154, 156, 0.12);
+  --color-accent-hover:   #22b5b7;
+  --shadow-sm:            0 1px 4px rgba(0, 0, 0, 0.30);
+  --shadow-md:            0 4px 16px rgba(0, 0, 0, 0.40);
+  --shadow-lg:            0 8px 32px rgba(0, 0, 0, 0.50);
+}
+
+/* ── 4. BASE RESET ────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: 400;
+  line-height: var(--leading-normal);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  min-height: 100vh;
+  transition:
+    background-color var(--dur-normal) var(--ease-inout),
+    color var(--dur-normal) var(--ease-inout);
+}
+
+button { font-family: var(--font-sans); }
+a { color: var(--color-accent); }
+ul, ol { list-style: none; }
+img, svg { display: block; }
+input, textarea, select { font-family: var(--font-sans); }
+
+/* ── 5. SKIP LINK ─────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--space-4);
+  z-index: 9999;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: top var(--dur-fast);
+}
+.skip-link:focus { top: var(--space-2); }
+
+/* ── 6. APP SHELL ─────────────────────────────────────────── */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ── 7. HEADER ────────────────────────────────────────────── */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--header-h);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-6);
+  gap: var(--space-4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    background-color var(--dur-normal) var(--ease-inout),
+    border-color var(--dur-normal) var(--ease-inout);
+}
+
+.header__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  color: var(--color-text);
+  flex-shrink: 0;
+}
+
+.header__logo-mark {
+  width: 28px;
+  height: 28px;
+  color: var(--color-accent);
+  flex-shrink: 0;
+  transition: color var(--dur-normal);
+}
+
+.header__logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.header__logo-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.header__logo-sub {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.header__spacer { flex: 1; }
+
+/* ── 8. THEME TOGGLE ─────────────────────────────────────── */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background var(--dur-fast),
+    color var(--dur-fast),
+    border-color var(--dur-fast);
+}
+.theme-toggle:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.theme-toggle svg { pointer-events: none; }
+/* show sun in dark mode, moon in light mode */
+.icon-sun  { display: none; }
+.icon-moon { display: block; }
+[data-theme="dark"] .icon-sun  { display: block; }
+[data-theme="dark"] .icon-moon { display: none; }
+
+/* ── 9. PROGRESS STRIP ───────────────────────────────────── */
+.progress-strip {
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-3) var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  transition: background-color var(--dur-normal) var(--ease-inout);
+}
+
+.progress-strip__label {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  min-width: 180px;
+}
+
+.progress-strip__track {
+  flex: 1;
+  height: 4px;
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progress-strip__fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: var(--radius-full);
+  transition: width var(--dur-slow) var(--ease-out);
+}
+
+.progress-strip__pct {
+  font-size: var(--text-xs);
+  color: var(--color-accent);
+  font-weight: 600;
+  min-width: 34px;
+  text-align: right;
+}
+
+.progress-strip.is-hidden { display: none; }
+
+/* ── 10. SLIDES VIEWPORT ─────────────────────────────────── */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.slides-viewport {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── 11. SLIDE ANIMATIONS ────────────────────────────────── */
+@keyframes slideInRight {
+  from { transform: translateX(60px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes slideOutLeft {
+  from { transform: translateX(0);     opacity: 1; }
+  to   { transform: translateX(-60px); opacity: 0; }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-60px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0);   opacity: 1; }
+  to   { transform: translateX(60px); opacity: 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInFast {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Slide panel base */
+.section-slide {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-8) var(--space-6) 120px;
+  display: none;
+  will-change: transform, opacity;
+}
+
+.section-slide.is-active {
+  display: block;
+  animation: slideInRight var(--dur-slow) var(--ease-out) forwards;
+}
+
+.section-slide.is-leaving {
+  display: block;
+  animation: slideOutLeft var(--dur-slow) var(--ease-out) forwards;
+  pointer-events: none;
+}
+
+/* Reverse direction (back navigation) */
+.section-slide.is-active.dir-back {
+  animation-name: slideInLeft;
+}
+.section-slide.is-leaving.dir-back {
+  animation-name: slideOutRight;
+}
+
+/* Reduced-motion: swap instantly, skip all transitions */
+@media (prefers-reduced-motion: reduce) {
+  .section-slide.is-active,
+  .section-slide.is-leaving {
+    animation: none !important;
+  }
+  .section-slide.is-leaving { display: none !important; }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── 12. CONTENT WRAPPER ─────────────────────────────────── */
+.section-content {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── 13. SECTION HEADER ──────────────────────────────────── */
+.section-header {
+  margin-bottom: var(--space-8);
+  user-select: none;
+}
+
+.section-header__num {
+  font-family: var(--font-serif);
+  font-size: 5rem;
+  line-height: 1;
+  color: var(--color-accent);
+  opacity: 0.12;
+  letter-spacing: -0.03em;
+  margin-bottom: calc(-1 * var(--space-5));
+  display: block;
+}
+
+.section-header__title {
+  font-family: var(--font-serif);
+  font-size: var(--text-3xl);
+  line-height: var(--leading-tight);
+  color: var(--color-text);
+  font-weight: 400;
+  margin-bottom: var(--space-3);
+}
+
+.section-header__desc {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+  max-width: 540px;
+}
+
+/* ── 14. QUESTION CARD ───────────────────────────────────── */
+.q-card {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5) var(--space-6);
+  margin-bottom: var(--space-4);
+  transition:
+    border-color var(--dur-fast),
+    box-shadow var(--dur-fast),
+    background-color var(--dur-normal) var(--ease-inout);
+}
+
+.q-card:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light), var(--shadow-sm);
+}
+
+/* Question label */
+.q-label {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--color-text);
+  line-height: var(--leading-normal);
+  margin-bottom: var(--space-4);
+  display: block;
+}
+
+.q-num {
+  font-weight: 600;
+  color: var(--color-accent);
+  margin-right: var(--space-1);
+}
+
+.q-optional {
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-text-faint);
+  margin-left: var(--space-2);
+}
+
+.q-hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-4);
+  line-height: var(--leading-normal);
+}
+
+/* ── 15. PILL / CARD BUTTONS (single-select) ─────────────── */
+.pill-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pill-group--horizontal {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.pill-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 400;
+  text-align: left;
+  width: 100%;
+  transition:
+    border-color var(--dur-fast),
+    background var(--dur-fast),
+    color var(--dur-fast),
+    box-shadow var(--dur-fast);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pill-option:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
+}
+
+.pill-option:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.pill-option.is-selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+/* Custom radio dot */
+.pill-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-border-strong);
+  flex-shrink: 0;
+  transition:
+    border-color var(--dur-fast),
+    background var(--dur-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pill-option.is-selected .pill-dot {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.pill-option.is-selected .pill-dot::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: #fff;
+}
+
+/* ── 16. LIKERT SCALE ────────────────────────────────────── */
+.likert-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.likert-scale {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.likert-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-border-strong);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    border-color var(--dur-fast),
+    background var(--dur-fast),
+    color var(--dur-fast),
+    transform var(--dur-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.likert-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  transform: scale(1.10);
+}
+
+.likert-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.likert-btn.is-selected {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+  transform: scale(1.10);
+}
+
+.likert-labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.likert-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+}
+
+/* Compact variant (tables) */
+.likert-scale--compact .likert-btn {
+  width: 32px;
+  height: 32px;
+  font-size: var(--text-xs);
+}
+
+/* ── 17. BWM MATRIX TABLE ────────────────────────────────── */
+.bwm-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  margin-top: var(--space-4);
+}
+
+.bwm-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+  font-size: var(--text-sm);
+  background: var(--color-surface-2);
+}
+
+.bwm-table thead tr {
+  background: var(--color-surface);
+}
+
+.bwm-table th {
+  padding: var(--space-3) var(--space-2);
+  font-weight: 600;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.bwm-table th:first-child {
+  text-align: left;
+  padding-left: var(--space-4);
+  min-width: 175px;
+}
+
+/* Dynamic context header row */
+.bwm-context-row td {
+  font-size: var(--text-xs);
+  color: var(--color-accent);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-accent-light);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.bwm-table td {
+  padding: var(--space-2);
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+  transition: background var(--dur-fast);
+}
+
+.bwm-table td:first-child {
+  text-align: left;
+  padding-left: var(--space-4);
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.bwm-table tr:last-child td { border-bottom: none; }
+
+.bwm-table tbody tr:hover td {
+  background: var(--color-accent-light);
+}
+
+/* Locked row (Best in D3 / Worst in D4 — prefilled with 1) */
+.bwm-table tr.is-locked td {
+  background: var(--color-surface) !important;
+}
+.bwm-table tr.is-locked td:first-child {
+  color: var(--color-accent);
+}
+
+/* Individual cell button */
+.bwm-cell {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color var(--dur-fast),
+    background var(--dur-fast),
+    color var(--dur-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bwm-cell:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.bwm-cell:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.bwm-cell.is-selected {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+.bwm-cell:disabled {
+  cursor: default;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* ── 18. TOPSIS MATRIX ───────────────────────────────────── */
+/* Desktop table */
+.topsis-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  margin-top: var(--space-4);
+}
+
+.topsis-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+  font-size: var(--text-xs);
+  background: var(--color-surface-2);
+}
+
+.topsis-table th {
+  padding: var(--space-2) var(--space-3);
+  font-weight: 600;
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  white-space: nowrap;
+}
+
+.topsis-table th:first-child {
+  text-align: left;
+  padding-left: var(--space-4);
+  min-width: 190px;
+}
+
+.topsis-table td {
+  padding: var(--space-3) var(--space-2);
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+  transition: background var(--dur-fast);
+}
+
+.topsis-table td:first-child {
+  text-align: left;
+  padding-left: var(--space-4);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-text);
+}
+
+.topsis-table tr:last-child td { border-bottom: none; }
+.topsis-table tbody tr:hover td { background: var(--color-accent-light); }
+
+/* 5-dot rating widget */
+.dot-rating {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  justify-content: center;
+}
+
+.dot-rating__dot {
+  width: 13px;
+  height: 13px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-border-strong);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background var(--dur-fast),
+    border-color var(--dur-fast),
+    transform var(--dur-fast);
+}
+
+.dot-rating__dot:hover,
+.dot-rating__dot.is-active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.dot-rating__dot:hover { transform: scale(1.25); }
+
+.dot-rating__na {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  margin-left: 3px;
+  line-height: 1.2;
+  transition:
+    background var(--dur-fast),
+    color var(--dur-fast),
+    border-color var(--dur-fast);
+  user-select: none;
+}
+
+.dot-rating__na.is-active {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border-color: var(--color-border-strong);
+}
+
+/* Mobile card layout (shown instead of table on small screens) */
+.topsis-cards {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.topsis-card {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.topsis-card__header {
+  background: var(--color-surface);
+  padding: var(--space-3) var(--space-4);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.topsis-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-3);
+}
+
+.topsis-card__row:last-child { border-bottom: none; }
+
+.topsis-card__criterion {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+}
+
+.topsis-card__dots {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.topsis-card__dots .dot-rating__dot {
+  width: 22px;
+  height: 22px;
+}
+
+/* ── 19. TEXT INPUTS ─────────────────────────────────────── */
+.text-input-wrap { position: relative; }
+
+.text-input,
+.text-area {
+  width: 100%;
+  border: none;
+  border-bottom: 1.5px solid var(--color-border-strong);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-base);
+  padding: var(--space-2) 0;
+  outline: none;
+  transition: border-color var(--dur-fast);
+  -webkit-appearance: none;
+}
+
+.text-input:focus,
+.text-area:focus {
+  border-bottom-color: var(--color-accent);
+}
+
+.text-input::placeholder,
+.text-area::placeholder {
+  color: var(--color-text-faint);
+}
+
+.text-area {
+  resize: vertical;
+  min-height: 88px;
+  line-height: var(--leading-normal);
+}
+
+.char-counter {
+  text-align: right;
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+  margin-top: var(--space-1);
+  transition: color var(--dur-fast);
+}
+
+.char-counter.is-near-limit { color: #c07820; }
+.char-counter.is-at-limit   { color: var(--color-error); }
+
+/* ── 20. CONDITIONAL REVEAL (F2a) ────────────────────────── */
+.conditional-wrap {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition:
+    max-height var(--dur-slow) var(--ease-out),
+    opacity var(--dur-normal) var(--ease-inout),
+    margin-top var(--dur-normal) var(--ease-inout);
+  margin-top: 0;
+}
+
+.conditional-wrap.is-visible {
+  max-height: 280px;
+  opacity: 1;
+  margin-top: var(--space-4);
+}
+
+/* ── 21. NAVIGATION BAR ──────────────────────────────────── */
+.nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-3) var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  transition:
+    background-color var(--dur-normal) var(--ease-inout),
+    border-color var(--dur-normal) var(--ease-inout);
+}
+
+.nav-bar.is-hidden { display: none; }
+
+/* ── 22. BUTTONS ─────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  text-decoration: none;
+  transition:
+    background var(--dur-fast),
+    color var(--dur-fast),
+    border-color var(--dur-fast),
+    opacity var(--dur-fast),
+    transform var(--dur-fast),
+    box-shadow var(--dur-fast);
+  user-select: none;
+  white-space: nowrap;
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.btn:active:not(:disabled) { transform: scale(0.97); }
+
+/* Primary */
+.btn-primary {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+  box-shadow: var(--shadow-md);
+}
+.btn-primary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Ghost */
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+/* Danger */
+.btn-danger {
+  background: var(--color-error);
+  color: #fff;
+  border-color: var(--color-error);
+}
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+/* Large CTA */
+.btn-lg {
+  padding: var(--space-4) var(--space-10);
+  font-size: var(--text-base);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  min-height: 52px;
+}
+
+/* ── 23. LANDING SCREEN ──────────────────────────────────── */
+.landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - var(--header-h));
+  padding: var(--space-16) var(--space-6);
+  text-align: center;
+  animation: fadeIn var(--dur-slow) var(--ease-out) forwards;
+}
+
+.landing__badges {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: var(--space-8);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  letter-spacing: 0.01em;
+}
+
+.landing__title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.85rem, 5vw, 3rem);
+  line-height: var(--leading-tight);
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+  max-width: 640px;
+}
+
+.landing__subtitle {
+  font-size: var(--text-lg);
+  color: var(--color-accent);
+  font-weight: 500;
+  margin-bottom: var(--space-6);
+  font-style: italic;
+  font-family: var(--font-serif);
+}
+
+.landing__intro {
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+  max-width: 520px;
+  line-height: var(--leading-normal);
+  margin-bottom: var(--space-6);
+}
+
+.landing__meta {
+  display: flex;
+  gap: var(--space-6);
+  justify-content: center;
+  margin-bottom: var(--space-10);
+  flex-wrap: wrap;
+}
+
+.landing__meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.landing__meta-item svg {
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+/* ── 24. THANK-YOU SCREEN ────────────────────────────────── */
+.thankyou {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - var(--header-h));
+  padding: var(--space-16) var(--space-6);
+  text-align: center;
+  animation: fadeIn var(--dur-slow) var(--ease-out) forwards;
+}
+
+.thankyou__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-6);
+}
+
+.thankyou__title {
+  font-family: var(--font-serif);
+  font-size: var(--text-3xl);
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+}
+
+.thankyou__message {
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+  max-width: 480px;
+  line-height: var(--leading-normal);
+  margin-bottom: var(--space-8);
+}
+
+.thankyou__actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── 25. ERROR BANNER ────────────────────────────────────── */
+.error-banner {
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-6);
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  animation: fadeInFast var(--dur-fast) var(--ease-out) forwards;
+}
+
+.error-banner__icon {
+  color: var(--color-error);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.error-banner__body { flex: 1; }
+
+.error-banner__title {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  margin-bottom: var(--space-1);
+}
+
+.error-banner__text {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+}
+
+/* ── 26. DIVIDER ─────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: var(--space-6) 0;
+}
+
+/* ── 27. RESPONSIVE — TABLET (≤ 768px) ──────────────────── */
+@media (max-width: 768px) {
+  :root {
+    --space-6:  1.25rem;
+    --header-h: 56px;
+  }
+
+  .section-slide {
+    padding: var(--space-6) var(--space-5) 110px;
+  }
+
+  .section-header__num   { font-size: 3.5rem; }
+  .section-header__title { font-size: var(--text-2xl); }
+
+  .progress-strip       { padding: var(--space-2) var(--space-4); }
+  .progress-strip__label { min-width: 130px; font-size: 0.7rem; }
+
+  .bwm-table th,
+  .bwm-table td { padding: var(--space-2) var(--space-1); }
+  .bwm-cell { width: 24px; height: 24px; font-size: 0.65rem; }
+}
+
+/* ── 28. RESPONSIVE — MOBILE (≤ 480px) ──────────────────── */
+@media (max-width: 480px) {
+  :root { --space-6: 1rem; }
+
+  .header { padding: 0 var(--space-4); }
+  .header__logo-sub { display: none; }
+
+  .section-slide {
+    padding: var(--space-5) var(--space-4) 96px;
+  }
+
+  .nav-bar {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  /* Full-width buttons on mobile */
+  .nav-bar .btn-primary {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* Compact back button */
+  .btn-ghost.btn-back {
+    padding: var(--space-3) var(--space-4);
+    flex-shrink: 0;
+  }
+
+  .likert-scale { gap: var(--space-1); overflow-x: auto; }
+  .likert-btn { width: 40px; height: 40px; font-size: var(--text-xs); flex-shrink: 0; }
+
+  /* Switch TOPSIS table → cards on mobile */
+  .topsis-table-wrap { display: none; }
+  .topsis-cards { display: flex; }
+
+  .landing__meta { gap: var(--space-3); }
+  .landing__title { font-size: 1.75rem; }
+  .landing__meta-item span { display: none; }
+
+  .pill-group--horizontal { flex-direction: column; }
+
+  .thankyou__actions { flex-direction: column; align-items: stretch; }
+  .thankyou__actions .btn { justify-content: center; }
+}
+
+/* ── 29. UTILITY CLASSES ─────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.hidden { display: none !important; }
+
+.mt-2  { margin-top: var(--space-2); }
+.mt-4  { margin-top: var(--space-4); }
+.mt-6  { margin-top: var(--space-6); }
+.mb-4  { margin-bottom: var(--space-4); }
+
+.text-muted  { color: var(--color-text-muted); }
+.text-accent { color: var(--color-accent); }
+.text-sm     { font-size: var(--text-sm); }
+.text-xs     { font-size: var(--text-xs); }
+.font-serif  { font-family: var(--font-serif); }
+.italic      { font-style: italic; }
+</style>
+
+</head>
+<body>
+
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<div class="app">
+
+  <!-- ════════════════════════════════════════════════════
+       HEADER
+  ════════════════════════════════════════════════════ -->
+  <header class="header" role="banner">
+
+    <a href="#" class="header__logo" aria-label="NSM Research 2026 — return to start">
+      <!-- North-star asterisk: 4 lines crossing at centre -->
+      <svg class="header__logo-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+        <line x1="12" y1="2"    x2="12" y2="22"/>
+        <line x1="2"  y1="12"   x2="22" y2="12"/>
+        <line x1="4.93" y1="4.93"   x2="19.07" y2="19.07"/>
+        <line x1="19.07" y1="4.93"  x2="4.93"  y2="19.07"/>
+      </svg>
+      <div class="header__logo-text">
+        <span class="header__logo-name">NSM Research</span>
+        <span class="header__logo-sub">University of Turin · 2026</span>
+      </div>
+    </a>
+
+    <div class="header__spacer"></div>
+
+    <button class="theme-toggle" data-theme-toggle aria-label="Toggle dark mode" type="button">
+      <!-- Sun icon — shown in dark mode -->
+      <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1"  x2="12" y2="3"/>
+        <line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22"  y1="4.22"  x2="5.64"  y2="5.64"/>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1"  y1="12" x2="3"  y2="12"/>
+        <line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22"  y1="19.78" x2="5.64"  y2="18.36"/>
+        <line x1="18.36" y1="5.64"  x2="19.78" y2="4.22"/>
+      </svg>
+      <!-- Moon icon — shown in light mode -->
+      <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+
+  </header>
+
+  <!-- ════════════════════════════════════════════════════
+       PROGRESS STRIP  (hidden on landing / thank-you / error)
+  ════════════════════════════════════════════════════ -->
+  <div class="progress-strip is-hidden" id="progress-strip"
+       role="status" aria-live="polite" aria-label="Survey progress">
+    <span class="progress-strip__label" id="progress-label">1 of 6 — About You</span>
+    <div class="progress-strip__track"
+         role="progressbar" aria-valuenow="17" aria-valuemin="0" aria-valuemax="100"
+         aria-label="Survey completion">
+      <div class="progress-strip__fill" id="progress-fill" style="width:17%"></div>
+    </div>
+    <span class="progress-strip__pct" id="progress-pct" aria-hidden="true">17%</span>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════
+       MAIN — all screens live here as sibling slides
+  ════════════════════════════════════════════════════ -->
+  <main class="main" id="main-content">
+    <div class="slides-viewport" id="slides-viewport">
+
+
+      <!-- ══════════════════════════════════════════════
+           LANDING
+      ══════════════════════════════════════════════ -->
+      <div class="section-slide is-active" id="screen-landing">
+        <div class="landing">
+
+          <div class="landing__badges">
+            <span class="badge">University of Turin</span>
+            <span class="badge">Politecnico di Torino</span>
+            <span class="badge">School of Management &amp; Economics</span>
+          </div>
+
+          <h1 class="landing__title">How Organizations Select Their North&nbsp;Star&nbsp;Metric</h1>
+          <p class="landing__subtitle">A Mixed-Methods Decision Framework for Growth Hacking Metric Selection</p>
+
+          <p class="landing__intro">
+            This survey is part of an academic research project at the University of Turin and
+            Politecnico di Torino. We study how growth-oriented organizations evaluate and select
+            their primary performance metric — the "North Star Metric." Your responses are
+            fully anonymous and will be used solely for research purposes.
+          </p>
+
+          <div class="landing__meta">
+            <span class="landing__meta-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span>8–12 minutes</span>
+            </span>
+            <span class="landing__meta-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <span>Fully anonymous</span>
+            </span>
+            <span class="landing__meta-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              <span>Academic research only</span>
+            </span>
+          </div>
+
+          <button type="button" class="btn btn-primary btn-lg" id="btn-begin">
+            Begin Survey
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </button>
+
+          <p class="text-sm text-muted mt-6">
+            Karimian &amp; Vaezi &middot; Supervised by Prof. Gabriele Santoro
+          </p>
+
+        </div>
+      </div>
+
+
+      <!-- ══════════════════════════════════════════════
+           SECTION A — About You and Your Organization
+      ══════════════════════════════════════════════ -->
+      <div class="section-slide" id="screen-a"
+           data-section-index="1"
+           data-section-title="About You and Your Organization"
+           data-required-questions="a1,a2,a3,a4,a5,a6,a7">
+
+        <div class="section-content">
+          <header class="section-header">
+            <span class="section-header__num" aria-hidden="true">01</span>
+            <h2 class="section-header__title">About You and Your Organization</h2>
+            <p class="section-header__desc">Help us understand your professional background and the organization you represent.</p>
+          </header>
+
+          <!-- A1 ─ Role -->
+          <div class="q-card" id="q-a1">
+            <span class="q-label" id="a1-label">
+              <span class="q-num">A1.</span>
+              What is your current role?
+            </span>
+            <div class="pill-group" role="radiogroup" aria-labelledby="a1-label"
+                 data-question="a1" data-required="true">
+              <button type="button" class="pill-option" data-value="founder"          data-group="a1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Founder / Co-founder</span></button>
+              <button type="button" class="pill-option" data-value="ceo"              data-group="a1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>CEO / General Manager</span></button>
+              <button type="button" class="pill-option" data-value="product_manager"  data-group="a1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Product Manager / Product Lead</span></button>
+              <button type="button" class="pill-option" data-value="growth_manager"   data-group="a1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Growth Manager / Growth Lead</span></button>
+              <button type="button" class="pill-option" data-value="marketing_manager" data-group="a1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Marketing Manager / CMO</span></button>
+              <button type="button" class="pill-option" data-value="data_analytics"   data-group="a1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Data / Analytics Manager</span></button>
+              <button type="button" class="pill-option" data-value="operations"       data-group="a1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Operations Manager</span></button>
+              <button type="button" class="pill-option" data-value="other"            data-group="a1" data-has-other="true" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Other</span></button>
+              <div class="conditional-wrap" data-other-for="a1">
+                <div class="text-input-wrap mt-2">
+                  <label class="sr-only" for="a1-other">Please specify your role</label>
+                  <input type="text" class="text-input" id="a1-other" data-other-input="a1" placeholder="Please specify your role…" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- A2 ─ Experience -->
+          <div class="q-card" id="q-a2">
+            <span class="q-label" id="a2-label">
+              <span class="q-num">A2.</span>
+              How many years of professional experience do you have in your current field?
+            </span>
+            <div class="pill-group" role="radiogroup" aria-labelledby="a2-label"
+                 data-question="a2" data-required="true">
+              <button type="button" class="pill-option" data-value="lt2"   data-group="a2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Less than 2 years</span></button>
+              <button type="button" class="pill-option" data-value="2to5"  data-group="a2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>2–5 years</span></button>
+              <button type="button" class="pill-option" data-value="5to10" data-group="a2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>5–10 years</span></button>
+              <button type="button" class="pill-option" data-value="gt10"  data-group="a2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>More than 10 years</span></button>
+            </div>
+          </div>
+
+          <!-- A3 ─ Industry -->
+          <div class="q-card" id="q-a3">
+            <span class="q-label" id="a3-label">
+              <span class="q-num">A3.</span>
+              What industry best describes your organization?
+            </span>
+            <div class="pill-group" role="radiogroup" aria-labelledby="a3-label"
+                 data-question="a3" data-required="true">
+              <button type="button" class="pill-option" data-value="saas"         data-group="a3" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>SaaS / Software</span></button>
+              <button type="button" class="pill-option" data-value="ecommerce"    data-group="a3" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>E-commerce / Marketplace</span></button>
+              <button type="button" class="pill-option" data-value="fintech"      data-group="a3" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Fintech</span></button>
+              <button type="button" class="pill-option" data-value="healthtech"   data-group="a3" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Healthtech</span></button>
+              <button type="button" class="pill-option" data-value="edtech"       data-group="a3" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Edtech</span></button>
+              <button type="button" class="pill-option" data-value="consumer_app" data-group="a3" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Consumer App / Mobile</span></button>
+              <button type="button" class="pill-option" data-value="b2b_services" data-group="a3" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>B2B Services</span></button>
+              <button type="button" class="pill-option" data-value="media"        data-group="a3" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Media / Content</span></button>
+              <button type="button" class="pill-option" data-value="other"        data-group="a3" data-has-other="true" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Other</span></button>
+              <div class="conditional-wrap" data-other-for="a3">
+                <div class="text-input-wrap mt-2">
+                  <label class="sr-only" for="a3-other">Please specify your industry</label>
+                  <input type="text" class="text-input" id="a3-other" data-other-input="a3" placeholder="Please specify your industry…" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- A4 ─ Region -->
+          <div class="q-card" id="q-a4">
+            <span class="q-label" id="a4-label">
+              <span class="q-num">A4.</span>
+              In which country or region does your organization primarily operate?
+            </span>
+            <div class="pill-group" role="radiogroup" aria-labelledby="a4-label"
+                 data-question="a4" data-required="true">
+              <button type="button" class="pill-option" data-value="italy"           data-group="a4" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Italy</span></button>
+              <button type="button" class="pill-option" data-value="western_europe"  data-group="a4" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Other Western Europe</span></button>
+              <button type="button" class="pill-option" data-value="eastern_europe"  data-group="a4" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Eastern Europe</span></button>
+              <button type="button" class="pill-option" data-value="north_america"   data-group="a4" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>North America</span></button>
+              <button type="button" class="pill-option" data-value="latin_america"   data-group="a4" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Latin America</span></button>
+              <button type="button" class="pill-option" data-value="mea"             data-group="a4" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Middle East &amp; Africa</span></button>
+              <button type="button" class="pill-option" data-value="apac"            data-group="a4" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Asia-Pacific</span></button>
+              <button type="button" class="pill-option" data-value="other"           data-group="a4" data-has-other="true" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Other</span></button>
+              <div class="conditional-wrap" data-other-for="a4">
+                <div class="text-input-wrap mt-2">
+                  <label class="sr-only" for="a4-other">Please specify your country or region</label>
+                  <input type="text" class="text-input" id="a4-other" data-other-input="a4" placeholder="Please specify your country or region…" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- A5 ─ Lifecycle stage -->
+          <div class="q-card" id="q-a5">
+            <span class="q-label" id="a5-label">
+              <span class="q-num">A5.</span>
+              What is the current lifecycle stage of your organization?
+            </span>
+            <div class="pill-group" role="radiogroup" aria-labelledby="a5-label"
+                 data-question="a5" data-required="true">
+              <button type="button" class="pill-option" data-value="pre_seed"     data-group="a5" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Pre-seed / Idea stage</span></button>
+              <button type="button" class="pill-option" data-value="seed"         data-group="a5" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Seed (product live, early users)</span></button>
+              <button type="button" class="pill-option" data-value="early_growth" data-group="a5" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Early growth (Series A or equivalent)</span></button>
+              <button type="button" class="pill-option" data-value="scale_up"     data-group="a5" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Scale-up (Series B+ or equivalent)</span></button>
+              <button type="button" class="pill-option" data-value="mature"       data-group="a5" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Mature / Established company</span></button>
+              <button type="button" class="pill-option" data-value="corporate"    data-group="a5" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Corporate / Enterprise</span></button>
+            </div>
+          </div>
+
+          <!-- A6 ─ Funding -->
+          <div class="q-card" id="q-a6">
+            <span class="q-label" id="a6-label">
+              <span class="q-num">A6.</span>
+              Approximately how much total funding has your organization raised?
+            </span>
+            <div class="pill-group" role="radiogroup" aria-labelledby="a6-label"
+                 data-question="a6" data-required="true">
+              <button type="button" class="pill-option" data-value="bootstrapped" data-group="a6" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Bootstrapped (no external funding)</span></button>
+              <button type="button" class="pill-option" data-value="lt500k"       data-group="a6" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Less than €500K</span></button>
+              <button type="button" class="pill-option" data-value="500k_2m"      data-group="a6" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>€500K – €2M</span></button>
+              <button type="button" class="pill-option" data-value="2m_10m"       data-group="a6" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>€2M – €10M</span></button>
+              <button type="button" class="pill-option" data-value="10m_50m"      data-group="a6" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>€10M – €50M</span></button>
+              <button type="button" class="pill-option" data-value="gt50m"        data-group="a6" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>More than €50M</span></button>
+              <button type="button" class="pill-option" data-value="prefer_not"   data-group="a6" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Not applicable / Prefer not to say</span></button>
+            </div>
+          </div>
+
+          <!-- A7 ─ Employee count -->
+          <div class="q-card" id="q-a7">
+            <span class="q-label" id="a7-label">
+              <span class="q-num">A7.</span>
+              How many full-time employees does your organization currently have?
+            </span>
+            <div class="pill-group" role="radiogroup" aria-labelledby="a7-label"
+                 data-question="a7" data-required="true">
+              <button type="button" class="pill-option" data-value="1_10"    data-group="a7" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>1–10</span></button>
+              <button type="button" class="pill-option" data-value="11_50"   data-group="a7" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>11–50</span></button>
+              <button type="button" class="pill-option" data-value="51_200"  data-group="a7" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>51–200</span></button>
+              <button type="button" class="pill-option" data-value="201_500" data-group="a7" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>201–500</span></button>
+              <button type="button" class="pill-option" data-value="gt500"   data-group="a7" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>More than 500</span></button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ══════════════════════════════════════════════
+           SECTION B — Growth Practices
+      ══════════════════════════════════════════════ -->
+      <div class="section-slide" id="screen-b"
+           data-section-index="2"
+           data-section-title="Growth Practices"
+           data-required-questions="b1,b2,b3,b4,b5,b6,b7,b8">
+
+        <div class="section-content">
+          <header class="section-header">
+            <span class="section-header__num" aria-hidden="true">02</span>
+            <h2 class="section-header__title">Growth Practices in Your Organization</h2>
+            <p class="section-header__desc">Tell us how your organization uses metrics, OKRs, and growth experimentation. Scale: 1 = Strongly Disagree → 5 = Strongly Agree.</p>
+          </header>
+
+          <!-- B1 ─ Primary metric (Likert 1–5) -->
+          <div class="q-card" id="q-b1">
+            <span class="q-label" id="b1-label">
+              <span class="q-num">B1.</span>
+              Our organization actively uses a single primary metric to guide our growth strategy.
+            </span>
+            <div class="likert-wrap" data-question="b1" data-required="true">
+              <div class="likert-scale" role="group" aria-labelledby="b1-label">
+                <button type="button" class="likert-btn" data-value="1" data-group="b1" aria-label="1 – Strongly Disagree">1</button>
+                <button type="button" class="likert-btn" data-value="2" data-group="b1" aria-label="2">2</button>
+                <button type="button" class="likert-btn" data-value="3" data-group="b1" aria-label="3 – Neutral">3</button>
+                <button type="button" class="likert-btn" data-value="4" data-group="b1" aria-label="4">4</button>
+                <button type="button" class="likert-btn" data-value="5" data-group="b1" aria-label="5 – Strongly Agree">5</button>
+              </div>
+              <div class="likert-labels">
+                <span class="likert-label">Strongly Disagree</span>
+                <span class="likert-label">Strongly Agree</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- B2 ─ NSM familiarity (4-option pill) -->
+          <div class="q-card" id="q-b2">
+            <span class="q-label" id="b2-label">
+              <span class="q-num">B2.</span>
+              How familiar are you with the concept of a "North Star Metric" (NSM)?
+            </span>
+            <div class="pill-group" role="radiogroup" aria-labelledby="b2-label"
+                 data-question="b2" data-required="true">
+              <button type="button" class="pill-option" data-value="never_heard"     data-group="b2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>I have never heard of it</span></button>
+              <button type="button" class="pill-option" data-value="heard_not_use"   data-group="b2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>I have heard of it but do not use it</span></button>
+              <button type="button" class="pill-option" data-value="use_occasionally" data-group="b2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>I use it occasionally</span></button>
+              <button type="button" class="pill-option" data-value="use_regularly"   data-group="b2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>I use it regularly</span></button>
+            </div>
+          </div>
+
+          <!-- B3 ─ NSM defined (Likert 1–5) -->
+          <div class="q-card" id="q-b3">
+            <span class="q-label" id="b3-label">
+              <span class="q-num">B3.</span>
+              Our organization has formally defined a North Star Metric.
+            </span>
+            <div class="likert-wrap" data-question="b3" data-required="true">
+              <div class="likert-scale" role="group" aria-labelledby="b3-label">
+                <button type="button" class="likert-btn" data-value="1" data-group="b3" aria-label="1 – Strongly Disagree">1</button>
+                <button type="button" class="likert-btn" data-value="2" data-group="b3" aria-label="2">2</button>
+                <button type="button" class="likert-btn" data-value="3" data-group="b3" aria-label="3 – Neutral">3</button>
+                <button type="button" class="likert-btn" data-value="4" data-group="b3" aria-label="4">4</button>
+                <button type="button" class="likert-btn" data-value="5" data-group="b3" aria-label="5 – Strongly Agree">5</button>
+              </div>
+              <div class="likert-labels">
+                <span class="likert-label">Strongly Disagree</span>
+                <span class="likert-label">Strongly Agree</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- B4 ─ NSM revised (Likert 1–5) -->
+          <div class="q-card" id="q-b4">
+            <span class="q-label" id="b4-label">
+              <span class="q-num">B4.</span>
+              We regularly revisit and update our North Star Metric as strategy evolves.
+            </span>
+            <div class="likert-wrap" data-question="b4" data-required="true">
+              <div class="likert-scale" role="group" aria-labelledby="b4-label">
+                <button type="button" class="likert-btn" data-value="1" data-group="b4" aria-label="1 – Strongly Disagree">1</button>
+                <button type="button" class="likert-btn" data-value="2" data-group="b4" aria-label="2">2</button>
+                <button type="button" class="likert-btn" data-value="3" data-group="b4" aria-label="3 – Neutral">3</button>
+                <button type="button" class="likert-btn" data-value="4" data-group="b4" aria-label="4">4</button>
+                <button type="button" class="likert-btn" data-value="5" data-group="b4" aria-label="5 – Strongly Agree">5</button>
+              </div>
+              <div class="likert-labels">
+                <span class="likert-label">Strongly Disagree</span>
+                <span class="likert-label">Strongly Agree</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- B5 ─ OKR familiarity (4-option pill) -->
+          <div class="q-card" id="q-b5">
+            <span class="q-label" id="b5-label">
+              <span class="q-num">B5.</span>
+              How familiar are you with OKRs (Objectives and Key Results) as a goal-setting framework?
+            </span>
+            <div class="pill-group" role="radiogroup" aria-labelledby="b5-label"
+                 data-question="b5" data-required="true">
+              <button type="button" class="pill-option" data-value="never_heard"      data-group="b5" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>I have never heard of it</span></button>
+              <button type="button" class="pill-option" data-value="heard_not_use"    data-group="b5" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>I have heard of it but do not use it</span></button>
+              <button type="button" class="pill-option" data-value="use_occasionally" data-group="b5" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>I use it occasionally</span></button>
+              <button type="button" class="pill-option" data-value="use_regularly"    data-group="b5" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>I use it regularly</span></button>
+            </div>
+          </div>
+
+          <!-- B6 ─ OKR use (Likert 1–5) -->
+          <div class="q-card" id="q-b6">
+            <span class="q-label" id="b6-label">
+              <span class="q-num">B6.</span>
+              Our organization uses OKRs or a similar structured goal-setting framework.
+            </span>
+            <div class="likert-wrap" data-question="b6" data-required="true">
+              <div class="likert-scale" role="group" aria-labelledby="b6-label">
+                <button type="button" class="likert-btn" data-value="1" data-group="b6" aria-label="1 – Strongly Disagree">1</button>
+                <button type="button" class="likert-btn" data-value="2" data-group="b6" aria-label="2">2</button>
+                <button type="button" class="likert-btn" data-value="3" data-group="b6" aria-label="3 – Neutral">3</button>
+                <button type="button" class="likert-btn" data-value="4" data-group="b6" aria-label="4">4</button>
+                <button type="button" class="likert-btn" data-value="5" data-group="b6" aria-label="5 – Strongly Agree">5</button>
+              </div>
+              <div class="likert-labels">
+                <span class="likert-label">Strongly Disagree</span>
+                <span class="likert-label">Strongly Agree</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- B7 ─ Experiments (Likert 1–5) -->
+          <div class="q-card" id="q-b7">
+            <span class="q-label" id="b7-label">
+              <span class="q-num">B7.</span>
+              Our organization runs rapid growth experiments (A/B tests, feature experiments, channel tests) on a regular basis.
+            </span>
+            <div class="likert-wrap" data-question="b7" data-required="true">
+              <div class="likert-scale" role="group" aria-labelledby="b7-label">
+                <button type="button" class="likert-btn" data-value="1" data-group="b7" aria-label="1 – Strongly Disagree">1</button>
+                <button type="button" class="likert-btn" data-value="2" data-group="b7" aria-label="2">2</button>
+                <button type="button" class="likert-btn" data-value="3" data-group="b7" aria-label="3 – Neutral">3</button>
+                <button type="button" class="likert-btn" data-value="4" data-group="b7" aria-label="4">4</button>
+                <button type="button" class="likert-btn" data-value="5" data-group="b7" aria-label="5 – Strongly Agree">5</button>
+              </div>
+              <div class="likert-labels">
+                <span class="likert-label">Strongly Disagree</span>
+                <span class="likert-label">Strongly Agree</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- B8 ─ Data-driven (Likert 1–5) -->
+          <div class="q-card" id="q-b8">
+            <span class="q-label" id="b8-label">
+              <span class="q-num">B8.</span>
+              Decisions about which metric to prioritize are made through a structured, data-driven process in our organization.
+            </span>
+            <div class="likert-wrap" data-question="b8" data-required="true">
+              <div class="likert-scale" role="group" aria-labelledby="b8-label">
+                <button type="button" class="likert-btn" data-value="1" data-group="b8" aria-label="1 – Strongly Disagree">1</button>
+                <button type="button" class="likert-btn" data-value="2" data-group="b8" aria-label="2">2</button>
+                <button type="button" class="likert-btn" data-value="3" data-group="b8" aria-label="3 – Neutral">3</button>
+                <button type="button" class="likert-btn" data-value="4" data-group="b8" aria-label="4">4</button>
+                <button type="button" class="likert-btn" data-value="5" data-group="b8" aria-label="5 – Strongly Agree">5</button>
+              </div>
+              <div class="likert-labels">
+                <span class="likert-label">Strongly Disagree</span>
+                <span class="likert-label">Strongly Agree</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- B9 ─ NSM name (optional text) -->
+          <div class="q-card" id="q-b9">
+            <label class="q-label" for="b9-input">
+              <span class="q-num">B9.</span>
+              What is the current North Star Metric used in your organization?
+              <span class="q-optional">Optional</span>
+            </label>
+            <p class="q-hint">e.g., "Weekly Active Users", "Nights Booked", "Messages Sent"</p>
+            <div class="text-input-wrap">
+              <input type="text" class="text-input" id="b9-input" data-question="b9"
+                     placeholder="Name the metric your organization uses…" />
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ══════════════════════════════════════════════
+           SECTION C — Criteria for Selecting a Metric
+      ══════════════════════════════════════════════ -->
+      <div class="section-slide" id="screen-c"
+           data-section-index="3"
+           data-section-title="Criteria for Selecting a Metric"
+           data-required-questions="c1,c2,c3,c4,c5,c6,c7,c8">
+
+        <div class="section-content">
+          <header class="section-header">
+            <span class="section-header__num" aria-hidden="true">03</span>
+            <h2 class="section-header__title">Criteria for Selecting a Growth Metric</h2>
+            <p class="section-header__desc">Rate how important each criterion is when selecting a North Star Metric. Scale: 1 = Not at all important → 7 = Extremely important.</p>
+          </header>
+
+          <!-- C1 ─ Value Alignment -->
+          <div class="q-card" id="q-c1">
+            <span class="q-label" id="c1-label">
+              <span class="q-num">C1.</span> Value Alignment
+            </span>
+            <p class="q-hint">The metric directly reflects the core value your product delivers to customers.</p>
+            <div class="likert-wrap" data-question="c1" data-required="true">
+              <div class="likert-scale" role="group" aria-labelledby="c1-label">
+                <button type="button" class="likert-btn" data-value="1" data-group="c1" aria-label="1 – Not at all important">1</button>
+                <button type="button" class="likert-btn" data-value="2" data-group="c1" aria-label="2">2</button>
+                <button type="button" class="likert-btn" data-value="3" data-group="c1" aria-label="3">3</button>
+                <button type="button" class="likert-btn" data-value="4" data-group="c1" aria-label="4 – Moderately important">4</button>
+                <button type="button" class="likert-btn" data-value="5" data-group="c1" aria-label="5">5</button>
+                <button type="button" class="likert-btn" data-value="6" data-group="c1" aria-label="6">6</button>
+                <button type="button" class="likert-btn" data-value="7" data-group="c1" aria-label="7 – Extremely important">7</button>
+              </div>
+              <div class="likert-labels">
+                <span class="likert-label">Not at all important</span>
+                <span class="likert-label">Extremely important</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- C2 ─ Measurability -->
+          <div class="q-card" id="q-c2">
+            <span class="q-label" id="c2-label">
+              <span class="q-num">C2.</span> Measurability
+            </span>
+            <p class="q-hint">The metric can be tracked reliably and frequently enough to guide weekly decisions.</p>
+            <div class="likert-wrap" data-question="c2" data-required="true">
+              <div class="likert-scale" role="group" aria-labelledby="c2-label">
+                <button type="button" class="likert-btn" data-value="1" data-group="c2" aria-label="1 – Not at all important">1</button>
+                <button type="button" class="likert-btn" data-value="2" data-group="c2" aria-label="2">2</button>
+                <button type="button" class="likert-btn" data-value="3" data-group="c2" aria-label="3">3</button>
+                <button type="button" class="likert-btn" data-value="4" data-group="c2" aria-label="4 – Moderately important">4</button>
+                <button type="button" class="likert-btn" data-value="5" data-group="c2" aria-label="5">5</button>
+                <button type="button" class="likert-btn" data-value="6" data-group="c2" aria-label="6">6</button>
+                <button type="button" class="likert-btn" data-value="7" data-group="c2" aria-label="7 – Extremely important">7</button>
+              </div>
+              <div class="likert-labels">
+                <span class="likert-label">Not at all important</span>
+                <span class="likert-label">Extremely important</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- C3 ─ Actionability -->
+          <div class="q-card" id="q-c3">
+            <span class="q-label" id="c3-label">
+              <span class="q-num">C3.</span> Actionability
+            </span>
+            <p class="q-hint">Teams can directly influence this metric through experiments and initiatives.</p>
+            <div class="likert-wrap" data-question="c3" data-required="true">
+              <div class="likert-scale" role="group" aria-labelledby="c3-label">
+                <button type="button" class="likert-btn" data-value="1" data-group="c3" aria-label="1 – Not at all important">1</button>
+                <button type="button" class="likert-btn" data-value="2" data-group="c3" aria-label="2">2</button>
+                <button type="button" class="likert-btn" data-value="3" data-group="c3" aria-label="3">3</button>
+                <button type="button" class="likert-btn" data-value="4" data-group="c3" aria-label="4 – Moderately important">4</button>
+                <button type="button" class="likert-btn" data-value="5" data-group="c3" aria-label="5">5</button>
+                <button type="button" class="likert-btn" data-value="6" data-group="c3" aria-label="6">6</button>
+                <button type="button" class="likert-btn" data-value="7" data-group="c3" aria-label="7 – Extremely important">7</button>
+              </div>
+              <div class="likert-labels">
+                <span class="likert-label">Not at all important</span>
+                <span class="likert-label">Extremely important</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- C4 ─ Predictive Power -->
+          <div class="q-card" id="q-c4">
+            <span class="q-label" id="c4-label">
+              <span class="q-num">C4.</span> Predictive Power
+            </span>
+            <p class="q-hint">Short-term changes in this metric reliably signal long-term business growth.</p>
+            <div class="likert-wrap" data-question="c4" data-required="true">
+              <div class="likert-scale" role="group" aria-labelledby="c4-label">
+                <button type="button" class="likert-btn" data-value="1" data-group="c4" aria-label="1 – Not at all important">1</button>
+                <button type="button" class="likert-btn" data-value="2" data-group="c4" aria-label="2">2</button>
+                <button type="button" class="likert-btn" data-value="3" data-group="c4" aria-label="3">3</button>
+                <button type="button" class="likert-btn" data-value="4" data-group="c4" aria-label="4 – Moderately important">4</button>
+                <button type="button" class="likert-btn" data-value="5" data-group="c4" aria-label="5">5</button>
+                <button type="button" class="likert-btn" data-value="6" data-group="c4" aria-label="6">6</button>
+                <button type="button" class="likert-btn" data-value="7" data-group="c4" aria-label="7 – Extremely important">7</button>
+              </div>
+              <div class="likert-labels">
+                <span class="likert-label">Not at all important</span>
+                <span class="likert-label">Extremely important</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- C5 ─ Team Alignment -->
+          <div class="q-card" id="q-c5">
+            <span class="q-label" id="c5-label">
+              <span class="q-num">C5.</span> Team Alignment
+            </span>
+            <p class="q-hint">The metric creates a shared focus that unifies marketing, product, and engineering.</p>
+            <div class="likert-wrap" data-question="c5" data-required="true">
+              <div class="likert-scale" role="group" aria-labelledby="c5-label">
+                <button type="button" class="likert-btn" data-value="1" data-group="c5" aria-label="1 – Not at all important">1</button>
+                <button type="button" class="likert-btn" data-value="2" data-group="c5" aria-label="2">2</button>
+                <button type="button" class="likert-btn" data-value="3" data-group="c5" aria-label="3">3</button>
+                <button type="button" class="likert-btn" data-value="4" data-group="c5" aria-label="4 – Moderately important">4</button>
+                <button type="button" class="likert-btn" data-value="5" data-group="c5" aria-label="5">5</button>
+                <button type="button" class="likert-btn" data-value="6" data-group="c5" aria-label="6">6</button>
+                <button type="button" class="likert-btn" data-value="7" data-group="c5" aria-label="7 – Extremely important">7</button>
+              </div>
+              <div class="likert-labels">
+                <span class="likert-label">Not at all important</span>
+                <span class="likert-label">Extremely important</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- C6 ─ Gaming Resistance -->
+          <div class="q-card" id="q-c6">
+            <span class="q-label" id="c6-label">
+              <span class="q-num">C6.</span> Gaming Resistance
+            </span>
+            <p class="q-hint">The metric is hard to manipulate or inflate artificially when it becomes a target.</p>
+            <div class="likert-wrap" data-question="c6" data-required="true">
+              <div class="likert-scale" role="group" aria-labelledby="c6-label">
+                <button type="button" class="likert-btn" data-value="1" data-group="c6" aria-label="1 – Not at all important">1</button>
+                <button type="button" class="likert-btn" data-value="2" data-group="c6" aria-label="2">2</button>
+                <button type="button" class="likert-btn" data-value="3" data-group="c6" aria-label="3">3</button>
+                <button type="button" class="likert-btn" data-value="4" data-group="c6" aria-label="4 – Moderately important">4</button>
+                <button type="button" class="likert-btn" data-value="5" data-group="c6" aria-label="5">5</button>
+                <button type="button" class="likert-btn" data-value="6" data-group="c6" aria-label="6">6</button>
+                <button type="button" class="likert-btn" data-value="7" data-group="c6" aria-label="7 – Extremely important">7</button>
+              </div>
+              <div class="likert-labels">
+                <span class="likert-label">Not at all important</span>
+                <span class="likert-label">Extremely important</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- C7 ─ Experiment Sensitivity -->
+          <div class="q-card" id="q-c7">
+            <span class="q-label" id="c7-label">
+              <span class="q-num">C7.</span> Experiment Sensitivity
+            </span>
+            <p class="q-hint">The metric is sensitive enough to detect the impact of individual experiments.</p>
+            <div class="likert-wrap" data-question="c7" data-required="true">
+              <div class="likert-scale" role="group" aria-labelledby="c7-label">
+                <button type="button" class="likert-btn" data-value="1" data-group="c7" aria-label="1 – Not at all important">1</button>
+                <button type="button" class="likert-btn" data-value="2" data-group="c7" aria-label="2">2</button>
+                <button type="button" class="likert-btn" data-value="3" data-group="c7" aria-label="3">3</button>
+                <button type="button" class="likert-btn" data-value="4" data-group="c7" aria-label="4 – Moderately important">4</button>
+                <button type="button" class="likert-btn" data-value="5" data-group="c7" aria-label="5">5</button>
+                <button type="button" class="likert-btn" data-value="6" data-group="c7" aria-label="6">6</button>
+                <button type="button" class="likert-btn" data-value="7" data-group="c7" aria-label="7 – Extremely important">7</button>
+              </div>
+              <div class="likert-labels">
+                <span class="likert-label">Not at all important</span>
+                <span class="likert-label">Extremely important</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- C8 ─ Strategic Fit -->
+          <div class="q-card" id="q-c8">
+            <span class="q-label" id="c8-label">
+              <span class="q-num">C8.</span> Strategic Fit
+            </span>
+            <p class="q-hint">The metric aligns with the organization's current growth stage and strategic direction.</p>
+            <div class="likert-wrap" data-question="c8" data-required="true">
+              <div class="likert-scale" role="group" aria-labelledby="c8-label">
+                <button type="button" class="likert-btn" data-value="1" data-group="c8" aria-label="1 – Not at all important">1</button>
+                <button type="button" class="likert-btn" data-value="2" data-group="c8" aria-label="2">2</button>
+                <button type="button" class="likert-btn" data-value="3" data-group="c8" aria-label="3">3</button>
+                <button type="button" class="likert-btn" data-value="4" data-group="c8" aria-label="4 – Moderately important">4</button>
+                <button type="button" class="likert-btn" data-value="5" data-group="c8" aria-label="5">5</button>
+                <button type="button" class="likert-btn" data-value="6" data-group="c8" aria-label="6">6</button>
+                <button type="button" class="likert-btn" data-value="7" data-group="c8" aria-label="7 – Extremely important">7</button>
+              </div>
+              <div class="likert-labels">
+                <span class="likert-label">Not at all important</span>
+                <span class="likert-label">Extremely important</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ══════════════════════════════════════════════
+           SECTION D — Best-Worst Method
+      ══════════════════════════════════════════════ -->
+      <div class="section-slide" id="screen-d"
+           data-section-index="4"
+           data-section-title="Comparing the Criteria"
+           data-required-questions="d1,d2,d3,d4">
+
+        <div class="section-content">
+          <header class="section-header">
+            <span class="section-header__num" aria-hidden="true">04</span>
+            <h2 class="section-header__title">Comparing the Criteria</h2>
+            <p class="section-header__desc">Identify your most and least important criteria, then complete two pairwise comparison tables. This Best-Worst Method section takes 3–5 minutes and is the analytical core of the study.</p>
+          </header>
+
+          <!-- D1 ─ Best criterion -->
+          <div class="q-card" id="q-d1">
+            <span class="q-label" id="d1-label">
+              <span class="q-num">D1.</span>
+              Which ONE criterion do you consider the <strong>most important</strong> when selecting a North Star Metric?
+            </span>
+            <div class="pill-group" role="radiogroup" aria-labelledby="d1-label"
+                 data-question="d1" data-required="true" id="d1-group">
+              <button type="button" class="pill-option" data-value="value_alignment"       data-group="d1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C1 — Value Alignment</span></button>
+              <button type="button" class="pill-option" data-value="measurability"          data-group="d1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C2 — Measurability</span></button>
+              <button type="button" class="pill-option" data-value="actionability"          data-group="d1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C3 — Actionability</span></button>
+              <button type="button" class="pill-option" data-value="predictive_power"       data-group="d1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C4 — Predictive Power</span></button>
+              <button type="button" class="pill-option" data-value="team_alignment"         data-group="d1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C5 — Team Alignment</span></button>
+              <button type="button" class="pill-option" data-value="gaming_resistance"      data-group="d1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C6 — Gaming Resistance</span></button>
+              <button type="button" class="pill-option" data-value="experiment_sensitivity" data-group="d1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C7 — Experiment Sensitivity</span></button>
+              <button type="button" class="pill-option" data-value="strategic_fit"          data-group="d1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C8 — Strategic Fit</span></button>
+            </div>
+          </div>
+
+          <!-- D2 ─ Worst criterion (data-exclude links it to D1) -->
+          <div class="q-card" id="q-d2">
+            <span class="q-label" id="d2-label">
+              <span class="q-num">D2.</span>
+              Which ONE criterion do you consider the <strong>least important</strong> when selecting a North Star Metric?
+            </span>
+            <p class="q-hint">You may not select the same criterion you chose in D1.</p>
+            <div class="pill-group" role="radiogroup" aria-labelledby="d2-label"
+                 data-question="d2" data-required="true" data-exclude="d1" id="d2-group">
+              <button type="button" class="pill-option" data-value="value_alignment"       data-group="d2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C1 — Value Alignment</span></button>
+              <button type="button" class="pill-option" data-value="measurability"          data-group="d2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C2 — Measurability</span></button>
+              <button type="button" class="pill-option" data-value="actionability"          data-group="d2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C3 — Actionability</span></button>
+              <button type="button" class="pill-option" data-value="predictive_power"       data-group="d2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C4 — Predictive Power</span></button>
+              <button type="button" class="pill-option" data-value="team_alignment"         data-group="d2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C5 — Team Alignment</span></button>
+              <button type="button" class="pill-option" data-value="gaming_resistance"      data-group="d2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C6 — Gaming Resistance</span></button>
+              <button type="button" class="pill-option" data-value="experiment_sensitivity" data-group="d2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C7 — Experiment Sensitivity</span></button>
+              <button type="button" class="pill-option" data-value="strategic_fit"          data-group="d2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>C8 — Strategic Fit</span></button>
+            </div>
+          </div>
+
+          <!-- D3 ─ Best-to-Others matrix (JS populates after D1 is answered) -->
+          <div class="q-card" id="q-d3">
+            <span class="q-label" id="d3-label">
+              <span class="q-num">D3.</span>
+              Best-to-Others Comparison
+            </span>
+            <p class="q-hint" id="d3-hint">
+              How much more important is your <strong>most important criterion</strong> compared to each of the others?
+              Select D1 above to unlock this table.
+              Scale: 1 = equally important &middot; 9 = absolutely more important.
+            </p>
+            <div id="d3-matrix" role="group" aria-labelledby="d3-label"></div>
+          </div>
+
+          <!-- D4 ─ Others-to-Worst matrix (JS populates after D2 is answered) -->
+          <div class="q-card" id="q-d4">
+            <span class="q-label" id="d4-label">
+              <span class="q-num">D4.</span>
+              Others-to-Worst Comparison
+            </span>
+            <p class="q-hint" id="d4-hint">
+              How much more important is each criterion compared to your <strong>least important criterion</strong>?
+              Select D2 above to unlock this table.
+              Scale: 1 = equally important &middot; 9 = absolutely more important.
+            </p>
+            <div id="d4-matrix" role="group" aria-labelledby="d4-label"></div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ══════════════════════════════════════════════
+           SECTION E — Evaluating Candidate Metrics
+      ══════════════════════════════════════════════ -->
+      <div class="section-slide" id="screen-e"
+           data-section-index="5"
+           data-section-title="Evaluating Candidate Metrics"
+           data-required-questions="e_metrics">
+
+        <div class="section-content">
+          <header class="section-header">
+            <span class="section-header__num" aria-hidden="true">05</span>
+            <h2 class="section-header__title">Evaluating Candidate Metrics</h2>
+            <p class="section-header__desc">Please rate these metrics as if you were choosing for an organization similar to yours. Scale: 1 = Very Poor → 5 = Excellent. Use N/A if a metric is not applicable to your context.</p>
+          </header>
+
+          <!-- Desktop table — JS injects <table> here -->
+          <div class="topsis-table-wrap" id="topsis-desktop"
+               role="group" aria-label="Candidate metric evaluation — desktop table"></div>
+
+          <!-- Mobile cards — JS injects cards here -->
+          <div class="topsis-cards" id="topsis-mobile"
+               aria-label="Candidate metric evaluation — mobile cards"></div>
+
+          <!-- E1 ─ Other metric (optional) -->
+          <div class="q-card mt-6" id="q-e1">
+            <label class="q-label" for="e1-input">
+              <span class="q-num">E1.</span>
+              Does your organization use a primary metric not listed above?
+              <span class="q-optional">Optional</span>
+            </label>
+            <p class="q-hint">Name it and briefly describe why it was chosen.</p>
+            <div class="text-input-wrap">
+              <input type="text" class="text-input" id="e1-input" data-question="e1"
+                     placeholder="e.g., "Qualified Pipeline Value" — chosen because it maps directly to revenue readiness…" />
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ══════════════════════════════════════════════
+           SECTION F — Reflection
+      ══════════════════════════════════════════════ -->
+      <div class="section-slide" id="screen-f"
+           data-section-index="6"
+           data-section-title="Reflection"
+           data-required-questions="f1,f2">
+
+        <div class="section-content">
+          <header class="section-header">
+            <span class="section-header__num" aria-hidden="true">06</span>
+            <h2 class="section-header__title">Reflection</h2>
+            <p class="section-header__desc">A few final questions about your organization's metric selection history and any additional thoughts you'd like to share.</p>
+          </header>
+
+          <!-- F1 ─ Selection method -->
+          <div class="q-card" id="q-f1">
+            <span class="q-label" id="f1-label">
+              <span class="q-num">F1.</span>
+              How was the North Star Metric (or primary growth metric) originally chosen in your organization?
+            </span>
+            <div class="pill-group" role="radiogroup" aria-labelledby="f1-label"
+                 data-question="f1" data-required="true">
+              <button type="button" class="pill-option" data-value="formal_process"      data-group="f1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Formal analysis or structured process</span></button>
+              <button type="button" class="pill-option" data-value="leadership_decision" data-group="f1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Decision by leadership / founders</span></button>
+              <button type="button" class="pill-option" data-value="competitor_benchmark" data-group="f1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Inspired by a competitor or industry benchmark</span></button>
+              <button type="button" class="pill-option" data-value="organic_data"        data-group="f1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Emerged organically from data</span></button>
+              <button type="button" class="pill-option" data-value="external_advisor"    data-group="f1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>External advisor or consultant recommendation</span></button>
+              <button type="button" class="pill-option" data-value="no_metric"           data-group="f1" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>We do not have a defined primary metric</span></button>
+              <button type="button" class="pill-option" data-value="other"               data-group="f1" data-has-other="true" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Other</span></button>
+              <div class="conditional-wrap" data-other-for="f1">
+                <div class="text-input-wrap mt-2">
+                  <label class="sr-only" for="f1-other">Please describe how the metric was chosen</label>
+                  <input type="text" class="text-input" id="f1-other" data-other-input="f1"
+                         placeholder="Please describe how the metric was chosen…" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- F2 ─ Changed NSM -->
+          <div class="q-card" id="q-f2">
+            <span class="q-label" id="f2-label">
+              <span class="q-num">F2.</span>
+              Has your organization ever changed its North Star Metric?
+            </span>
+            <div class="pill-group" role="radiogroup" aria-labelledby="f2-label"
+                 data-question="f2" data-required="true" id="f2-group">
+              <button type="button" class="pill-option" data-value="yes"            data-group="f2" data-triggers="f2a-wrap" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Yes</span></button>
+              <button type="button" class="pill-option" data-value="no"             data-group="f2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>No</span></button>
+              <button type="button" class="pill-option" data-value="not_applicable" data-group="f2" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Not applicable</span></button>
+            </div>
+
+            <!-- F2a ─ conditional reveal on "Yes" -->
+            <div class="conditional-wrap" id="f2a-wrap"
+                 data-conditional-for="f2" data-trigger-value="yes">
+              <div class="q-card mt-4" id="q-f2a"
+                   style="box-shadow:none; border-color:var(--color-accent); background:var(--color-accent-light);">
+                <label class="q-label" for="f2a-input">
+                  <span class="q-num">F2a.</span>
+                  What was the main reason for changing it?
+                </label>
+                <div class="text-input-wrap">
+                  <input type="text" class="text-input" id="f2a-input" data-question="f2a"
+                         placeholder="e.g., the original metric was easy to game, the company pivoted, market saturation…" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- F3 ─ Open comments (optional, 500-char limit) -->
+          <div class="q-card" id="q-f3">
+            <label class="q-label" for="f3-input">
+              <span class="q-num">F3.</span>
+              Any additional comments about how your organization selects, evaluates, or uses growth metrics?
+              <span class="q-optional">Optional</span>
+            </label>
+            <p class="q-hint">Is there anything missing from the criteria listed in this survey?</p>
+            <div class="text-input-wrap">
+              <textarea class="text-area" id="f3-input" data-question="f3"
+                        maxlength="500" rows="4"
+                        placeholder="Share any additional thoughts, challenges, or criteria we may have missed…"></textarea>
+            </div>
+            <div class="char-counter" id="f3-counter" aria-live="polite" aria-atomic="true">0 / 500</div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ══════════════════════════════════════════════
+           THANK-YOU SCREEN
+      ══════════════════════════════════════════════ -->
+      <div class="section-slide" id="screen-thankyou">
+        <div class="thankyou">
+
+          <div class="thankyou__icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+
+          <h2 class="thankyou__title">Thank you for your contribution.</h2>
+
+          <p class="thankyou__message">
+            Your response has been recorded. All answers are fully anonymous — no identifying
+            information was collected or stored. Your input will directly shape the first
+            academic decision framework for structured North Star Metric selection.
+          </p>
+
+          <div class="divider" style="width:100%;max-width:400px;"></div>
+
+          <p class="text-sm text-muted mt-4 mb-4" style="max-width:420px;text-align:center;line-height:1.7;">
+            Want to receive a summary of the findings once the study is complete?<br />
+            <a href="[FINDINGS_LINK]" id="findings-link" target="_blank" rel="noopener noreferrer">
+              Sign up here →
+            </a>
+          </p>
+
+          <div class="thankyou__actions">
+            <button type="button" class="btn btn-primary" id="btn-copy-link">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              Copy survey link
+            </button>
+          </div>
+
+          <p class="text-xs text-muted mt-6">
+            Karimian &amp; Vaezi &middot; Supervised by Prof. Gabriele Santoro<br />
+            University of Turin &amp; Politecnico di Torino
+          </p>
+
+        </div>
+      </div>
+
+
+      <!-- ══════════════════════════════════════════════
+           ERROR SCREEN
+      ══════════════════════════════════════════════ -->
+      <div class="section-slide" id="screen-error">
+        <div class="section-content" style="padding-top:var(--space-12);">
+
+          <div class="error-banner" role="alert" aria-live="assertive">
+            <span class="error-banner__icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8"    x2="12" y2="12"/>
+                <line x1="12" y1="16"   x2="12.01" y2="16"/>
+              </svg>
+            </span>
+            <div class="error-banner__body">
+              <p class="error-banner__title">Submission failed</p>
+              <p class="error-banner__text">
+                Something went wrong while saving your response — most likely a temporary
+                network issue. <strong>Your answers have been preserved.</strong>
+                Click "Try again" below and they will be resubmitted automatically.
+              </p>
+            </div>
+          </div>
+
+          <div style="text-align:center;padding:var(--space-8) 0;">
+            <button type="button" class="btn btn-primary btn-lg" id="btn-retry">
+              Try again
+            </button>
+            <p class="text-sm text-muted mt-4">
+              If the problem persists, contact
+              <a href="mailto:ali.vaezi@studenti.polito.it">ali.vaezi@studenti.polito.it</a>
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+
+    </div><!-- /slides-viewport -->
+  </main>
+
+
+  <!-- ════════════════════════════════════════════════════
+       STICKY NAVIGATION BAR  (hidden on landing / end screens)
+  ════════════════════════════════════════════════════ -->
+  <nav class="nav-bar is-hidden" id="nav-bar" aria-label="Survey navigation">
+    <button type="button" class="btn btn-ghost btn-back" id="btn-back"
+            aria-label="Go to previous section">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <line x1="19" y1="12" x2="5" y2="12"/>
+        <polyline points="12 19 5 12 12 5"/>
+      </svg>
+      Back
+    </button>
+    <button type="button" class="btn btn-primary" id="btn-next"
+            disabled aria-disabled="true">
+      Next
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <line x1="5" y1="12" x2="19" y2="12"/>
+        <polyline points="12 5 19 12 12 19"/>
+      </svg>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<script>
+/*
+ ================================================================================
+  NSM SURVEY — JAVASCRIPT
+  Project : "Selecting the North Star"
+            A Mixed-Methods Decision Framework for Growth Hacking Metric Selection
+
+  Ali Vaezi      — Politecnico di Torino          (web app / MCDM implementation)
+  Arman Karimian — University of Turin             (research lead / Gioia phase)
+  Supervisor     — Prof. Gabriele Santoro, University of Turin
+
+  ── SUPABASE SETUP (2 values to change) ────────────────────────────────────────
+  1. Go to supabase.com → New Project.
+  2. In Project Settings → API, copy the Project URL and the anon/public key.
+  3. Paste them into CONFIG.SUPABASE_URL and CONFIG.SUPABASE_ANON_KEY below.
+  4. In the SQL Editor run the schema block below, then click Run.
+
+  ── SQL SCHEMA ─────────────────────────────────────────────────────────────────
+  create table survey_responses (
+    id uuid default gen_random_uuid() primary key,
+    submitted_at timestamptz default now(),
+    role text, experience_years text, industry text, region text,
+    lifecycle_stage text, funding_raised text, employee_count text,
+    b1_primary_metric int, b2_nsm_familiarity text, b3_nsm_defined int,
+    b4_nsm_revised int, b5_okr_familiarity text, b6_okr_use int,
+    b7_experiments int, b8_data_driven int, b9_nsm_name text,
+    c1_value_alignment int, c2_measurability int, c3_actionability int,
+    c4_predictive_power int, c5_team_alignment int, c6_gaming_resistance int,
+    c7_experiment_sensitivity int, c8_strategic_fit int,
+    d1_best_criterion text, d2_worst_criterion text,
+    d3_best_to_others jsonb, d4_others_to_worst jsonb,
+    e_metric_ratings jsonb, e1_other_metric text,
+    f1_selection_method text, f2_changed_nsm text,
+    f2a_change_reason text, f3_comments text
+  );
+
+  ── DEPLOY TO VERCEL ─────────────────────────────────────────────────────────
+  a) Push index.html to a GitHub repository.
+  b) vercel.com → New Project → import the repo → Deploy (default settings).
+  c) No build command or output directory required.
+
+  ── EXPORT RESPONSES ─────────────────────────────────────────────────────────
+  Supabase Dashboard → Table Editor → survey_responses → Export CSV.
+  Python : pd.read_csv('responses.csv')
+  R      : read.csv('responses.csv')
+ ================================================================================
+*/
+
+/* ════════════════════════════════════════════════════════════════════════════
+   1. CONFIG
+   ════════════════════════════════════════════════════════════════════════════ */
+
+const CONFIG = {
+  SUPABASE_URL:      'YOUR_SUPABASE_URL',
+  SUPABASE_ANON_KEY: 'YOUR_SUPABASE_ANON_KEY',
+};
+
+/* ════════════════════════════════════════════════════════════════════════════
+   2. SUPABASE CLIENT
+   ════════════════════════════════════════════════════════════════════════════ */
+
+let dbClient = null;
+
+/* ════════════════════════════════════════════════════════════════════════════
+   3. SURVEY STATE — flat object matching the DB schema exactly
+   ════════════════════════════════════════════════════════════════════════════ */
+
+const surveyState = {
+  // Section A
+  role: null,              experience_years: null,  industry: null,
+  region: null,            lifecycle_stage: null,   funding_raised: null,
+  employee_count: null,
+  // Section B
+  b1_primary_metric: null, b2_nsm_familiarity: null, b3_nsm_defined: null,
+  b4_nsm_revised: null,    b5_okr_familiarity: null, b6_okr_use: null,
+  b7_experiments: null,    b8_data_driven: null,     b9_nsm_name: null,
+  // Section C
+  c1_value_alignment: null,       c2_measurability: null,
+  c3_actionability: null,         c4_predictive_power: null,
+  c5_team_alignment: null,        c6_gaming_resistance: null,
+  c7_experiment_sensitivity: null,c8_strategic_fit: null,
+  // Section D
+  d1_best_criterion: null,  d2_worst_criterion: null,
+  d3_best_to_others: null,  d4_others_to_worst: null,
+  // Section E
+  e_metric_ratings: null,   e1_other_metric: null,
+  // Section F
+  f1_selection_method: null, f2_changed_nsm: null,
+  f2a_change_reason: null,   f3_comments: null,
+};
+
+/* ════════════════════════════════════════════════════════════════════════════
+   4. CONSTANTS
+   ════════════════════════════════════════════════════════════════════════════ */
+
+const CRITERIA = [
+  { id: 'valuealignment',        label: 'Value Alignment' },
+  { id: 'measurability',         label: 'Measurability' },
+  { id: 'actionability',         label: 'Actionability' },
+  { id: 'predictivepower',       label: 'Predictive Power' },
+  { id: 'teamalignment',         label: 'Team Alignment' },
+  { id: 'gamingresistance',      label: 'Gaming Resistance' },
+  { id: 'experimentsensitivity', label: 'Experiment Sensitivity' },
+  { id: 'strategicfit',          label: 'Strategic Fit' },
+];
+
+const METRICS = [
+  { id: 'dau',       label: 'Daily / Weekly Active Users (DAU/WAU)' },
+  { id: 'retention', label: 'User Retention Rate (e.g., Day-30)' },
+  { id: 'mrr',       label: 'Monthly Recurring Revenue (MRR)' },
+  { id: 'clv',       label: 'Customer Lifetime Value (CLV/LTV)' },
+];
+
+/* ════════════════════════════════════════════════════════════════════════════
+   5. SCREEN ORDER
+      error screen is reached only on submit failure, not via normal flow
+   ════════════════════════════════════════════════════════════════════════════ */
+
+const SCREEN_ORDER = [
+  'screen-landing',
+  'screen-a',
+  'screen-b',
+  'screen-c',
+  'screen-d',
+  'screen-e',
+  'screen-f',
+  'screen-thankyou',
+];
+
+/* ════════════════════════════════════════════════════════════════════════════
+   6. NAVIGATION STATE
+   ════════════════════════════════════════════════════════════════════════════ */
+
+let currentScreenIndex = 0;
+let navDirection       = 'forward';
+let animTimeout        = null;          // ref for in-flight animation cleanup
+
+const ANIM_DURATION = 380;             // mirrors --dur-slow in CSS
+
+/* ════════════════════════════════════════════════════════════════════════════
+   7. HTML-attribute → surveyState key mapping
+      Allows handlers to read data-group / data-question from the DOM
+      without hardcoding the DB column names in event code.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+const STATE_KEY_MAP = {
+  a1: 'role',                 a2: 'experience_years',          a3: 'industry',
+  a4: 'region',               a5: 'lifecycle_stage',           a6: 'funding_raised',
+  a7: 'employee_count',
+  b1: 'b1_primary_metric',    b2: 'b2_nsm_familiarity',        b3: 'b3_nsm_defined',
+  b4: 'b4_nsm_revised',       b5: 'b5_okr_familiarity',        b6: 'b6_okr_use',
+  b7: 'b7_experiments',       b8: 'b8_data_driven',            b9: 'b9_nsm_name',
+  c1: 'c1_value_alignment',   c2: 'c2_measurability',          c3: 'c3_actionability',
+  c4: 'c4_predictive_power',  c5: 'c5_team_alignment',         c6: 'c6_gaming_resistance',
+  c7: 'c7_experiment_sensitivity',                             c8: 'c8_strategic_fit',
+  d1: 'd1_best_criterion',    d2: 'd2_worst_criterion',
+  e1: 'e1_other_metric',
+  f1: 'f1_selection_method',  f2: 'f2_changed_nsm',
+  f2a:'f2a_change_reason',    f3: 'f3_comments',
+};
+
+/* ════════════════════════════════════════════════════════════════════════════
+   8. HELPERS
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** Strips underscores and lowercases — normalizes D1/D2 pill values to CRITERIA ids. */
+function normalizeCriterionId(id) {
+  return id.replace(/_/g, '').toLowerCase();
+}
+
+/** Returns true when the OS accessibility setting requests minimal animation. */
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/** Moves keyboard focus to the first heading in a slide after transition. */
+function moveFocusToSection(slideEl) {
+  const heading = slideEl.querySelector('h1, h2');
+  if (!heading) return;
+  heading.setAttribute('tabindex', '-1');
+  heading.focus({ preventScroll: true });
+  heading.addEventListener('blur', () => heading.removeAttribute('tabindex'), { once: true });
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   9. PROGRESS BAR
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** Refreshes the progress strip label, fill width, and ARIA attributes. */
+function updateProgressBar() {
+  const strip = document.getElementById('progress-strip');
+  const label = document.getElementById('progress-label');
+  const fill  = document.getElementById('progress-fill');
+  const pct   = document.getElementById('progress-pct');
+
+  const isSurveySection = currentScreenIndex >= 1 && currentScreenIndex <= 6;
+  strip.classList.toggle('is-hidden', !isSurveySection);
+  if (!isSurveySection) return;
+
+  const sectionNum    = currentScreenIndex;    // 1 – 6
+  const total         = 6;
+  const percentage    = Math.round((sectionNum / total) * 100);
+  const activeSlide   = document.getElementById(SCREEN_ORDER[currentScreenIndex]);
+  const title         = activeSlide ? (activeSlide.dataset.sectionTitle || '') : '';
+
+  label.textContent = `${sectionNum} of ${total} — ${title}`;
+  fill.style.width  = `${percentage}%`;
+  fill.parentElement.setAttribute('aria-valuenow', percentage);
+  pct.textContent   = `${percentage}%`;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   10. NAV BAR
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** Shows or hides the nav bar; sets Back visibility and Next label. */
+function updateNavBar() {
+  const navBar  = document.getElementById('nav-bar');
+  const btnBack = document.getElementById('btn-back');
+  const btnNext = document.getElementById('btn-next');
+
+  const isSurveySection = currentScreenIndex >= 1 && currentScreenIndex <= 6;
+  navBar.classList.toggle('is-hidden', !isSurveySection);
+  if (!isSurveySection) return;
+
+  // Back button is invisible on Section A (index 1) so layout stays stable
+  btnBack.style.visibility = currentScreenIndex === 1 ? 'hidden' : 'visible';
+
+  // Rebuild Next label while keeping the arrow SVG node intact
+  const isSubmit = currentScreenIndex === SCREEN_ORDER.indexOf('screen-f');
+  const arrowSvg = btnNext.querySelector('svg');
+  btnNext.innerHTML = '';
+  btnNext.appendChild(document.createTextNode(isSubmit ? 'Submit' : 'Next'));
+  if (arrowSvg) btnNext.appendChild(arrowSvg);
+
+  updateNextButton();
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   11. NAVIGATION — goToScreen
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** Transitions from the current screen to targetIndex with a slide animation. */
+function goToScreen(targetIndex, direction) {
+  if (targetIndex === currentScreenIndex) return;
+  if (targetIndex < 0 || targetIndex >= SCREEN_ORDER.length) return;
+
+  // Abort any in-flight animation and immediately clean up its residual classes
+  if (animTimeout) {
+    clearTimeout(animTimeout);
+    animTimeout = null;
+    document.querySelectorAll('.section-slide.is-leaving').forEach(el =>
+      el.classList.remove('is-leaving', 'dir-back')
+    );
+  }
+
+  const currentId = SCREEN_ORDER[currentScreenIndex];
+  const targetId  = SCREEN_ORDER[targetIndex];
+  const currentEl = document.getElementById(currentId);
+  const targetEl  = document.getElementById(targetId);
+  if (!targetEl) return;
+
+  navDirection = direction;
+
+  // Always deactivate the error screen in case we're recovering from a failure
+  const errorEl = document.getElementById('screen-error');
+  if (errorEl && errorEl !== targetEl) errorEl.classList.remove('is-active');
+
+  if (prefersReducedMotion()) {
+    if (currentEl) currentEl.classList.remove('is-active');
+    targetEl.classList.add('is-active');
+    targetEl.scrollTop = 0;
+    currentScreenIndex = targetIndex;
+    updateProgressBar();
+    updateNavBar();
+    moveFocusToSection(targetEl);
+    return;
+  }
+
+  // Animate the current slide out
+  if (currentEl) {
+    currentEl.classList.remove('is-active');
+    currentEl.classList.add('is-leaving');
+    if (direction === 'back') currentEl.classList.add('dir-back');
+  }
+
+  // Animate the target slide in
+  targetEl.classList.add('is-active');
+  if (direction === 'back') targetEl.classList.add('dir-back');
+  targetEl.scrollTop = 0;
+
+  currentScreenIndex = targetIndex;
+  updateProgressBar();
+  updateNavBar();
+  moveFocusToSection(targetEl);
+
+  // Trigger section-specific renders when entering D or E
+  if (targetId === 'screen-d') {
+    if (surveyState.d1_best_criterion || surveyState.d2_worst_criterion) renderSectionD();
+  }
+  if (targetId === 'screen-e') renderSectionE();
+
+  // Remove animation classes once the CSS transition finishes
+  animTimeout = setTimeout(() => {
+    if (currentEl) currentEl.classList.remove('is-leaving', 'dir-back');
+    targetEl.classList.remove('dir-back');
+    animTimeout = null;
+  }, ANIM_DURATION);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   12. SECTION D — BWM MATRIX RENDERER
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** Renders BWM comparison tables for D3 and D4 into their placeholder divs. */
+function renderSectionD() {
+  const d3El = document.getElementById('d3-matrix');
+  const d4El = document.getElementById('d4-matrix');
+  if (!d3El || !d4El) return;
+
+  const bestRaw  = surveyState.d1_best_criterion;
+  const worstRaw = surveyState.d2_worst_criterion;
+  const bestId   = bestRaw  ? normalizeCriterionId(bestRaw)  : null;
+  const worstId  = worstRaw ? normalizeCriterionId(worstRaw) : null;
+  const bestCrit = bestId  ? CRITERIA.find(c => c.id === bestId)  : null;
+  const worstCrit = worstId ? CRITERIA.find(c => c.id === worstId) : null;
+
+  const placeholder = msg =>
+    `<p class="q-hint" style="padding:var(--space-3) 0;color:var(--color-text-faint)">${msg}</p>`;
+
+  d3El.innerHTML = bestCrit
+    ? buildBwmTable('d3', bestCrit,  surveyState.d3_best_to_others  || {})
+    : placeholder('Select your most important criterion above to unlock this table.');
+
+  d4El.innerHTML = worstCrit
+    ? buildBwmTable('d4', worstCrit, surveyState.d4_others_to_worst || {})
+    : placeholder('Select your least important criterion above to unlock this table.');
+}
+
+/** Builds an 8×9 BWM table as an HTML string; lockedCrit row is pre-filled with 1 and disabled. */
+function buildBwmTable(tableId, lockedCrit, saved) {
+  const isD3    = tableId === 'd3';
+  const context = isD3
+    ? `How many times more important is <strong>${lockedCrit.label}</strong> (Best) compared to each other criterion? Scale: 1 = equally important · 9 = absolutely more important.`
+    : `How many times more important is each criterion compared to <strong>${lockedCrit.label}</strong> (Worst)? Scale: 1 = equally important · 9 = absolutely more important.`;
+
+  const headers = [1,2,3,4,5,6,7,8,9].map(n => `<th scope="col">${n}</th>`).join('');
+
+  const rows = CRITERIA.map(crit => {
+    const isLocked = crit.id === lockedCrit.id;
+    const savedVal = saved[crit.id];
+    const label    = isLocked
+      ? `${crit.label}&nbsp;<span aria-hidden="true" style="color:var(--color-accent);font-size:0.7em">★</span>`
+      : crit.label;
+
+    const cells = [1,2,3,4,5,6,7,8,9].map(n => {
+      const active = isLocked ? n === 1 : savedVal === n;
+      const cls    = `bwm-cell${active ? ' is-selected' : ''}`;
+      if (isLocked) {
+        return `<td><button class="${cls}" type="button" disabled
+          aria-pressed="${active}" aria-label="${n}">${n}</button></td>`;
+      }
+      return `<td><button class="${cls}" type="button"
+        data-table="${tableId}" data-criterion="${crit.id}" data-val="${n}"
+        aria-pressed="${active}" aria-label="Rate ${n}">${n}</button></td>`;
+    }).join('');
+
+    return `<tr${isLocked ? ' class="is-locked"' : ''}><td>${label}</td>${cells}</tr>`;
+  }).join('');
+
+  return `<div class="bwm-table-wrap">
+    <table class="bwm-table" role="grid">
+      <thead><tr><th scope="col">Criterion</th>${headers}</tr></thead>
+      <tbody>
+        <tr class="bwm-context-row"><td colspan="10">${context}</td></tr>
+        ${rows}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   12b. SECTION E — TOPSIS GRID RENDERER
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** Renders the TOPSIS metric-evaluation grid into #topsis-desktop and #topsis-mobile. */
+function renderSectionE() {
+  const desktopEl = document.getElementById('topsis-desktop');
+  const mobileEl  = document.getElementById('topsis-mobile');
+  if (!desktopEl || !mobileEl) return;
+
+  const ratings = surveyState.e_metric_ratings || {};
+
+  // Desktop table
+  const ths = CRITERIA.map(c => `<th scope="col">${c.label}</th>`).join('');
+  const trs = METRICS.map(m => {
+    const tds = CRITERIA.map(c => {
+      const val = ratings[m.id]?.[c.id];
+      return `<td>${buildDotRating(m.id, c.id, val)}</td>`;
+    }).join('');
+    return `<tr><td>${m.label}</td>${tds}</tr>`;
+  }).join('');
+
+  desktopEl.innerHTML = `<table class="topsis-table" role="grid">
+    <thead><tr><th scope="col">Metric</th>${ths}</tr></thead>
+    <tbody>${trs}</tbody>
+  </table>`;
+
+  // Mobile cards
+  mobileEl.innerHTML = METRICS.map(m =>
+    `<div class="topsis-card">
+      <div class="topsis-card__header">${m.label}</div>
+      ${CRITERIA.map(c => {
+        const val = ratings[m.id]?.[c.id];
+        return `<div class="topsis-card__row">
+          <span class="topsis-card__criterion">${c.label}</span>
+          <div class="topsis-card__dots">${buildDotRating(m.id, c.id, val)}</div>
+        </div>`;
+      }).join('')}
+    </div>`
+  ).join('');
+}
+
+/** Returns a dot-rating widget (5 filled dots + N/A toggle) as an HTML string. */
+function buildDotRating(metricId, criterionId, currentVal) {
+  const dots = [1,2,3,4,5].map(n => {
+    const active = currentVal === n;
+    return `<span class="dot-rating__dot${active ? ' is-active' : ''}"
+      role="radio" aria-checked="${active}" tabindex="${active ? '0' : '-1'}"
+      data-metric="${metricId}" data-criterion="${criterionId}" data-val="${n}"
+      aria-label="Rate ${n}"></span>`;
+  }).join('');
+
+  const naActive = currentVal === 'na';
+  return `<div class="dot-rating" role="radiogroup" aria-label="${metricId} ${criterionId}">${dots}<span
+    class="dot-rating__na${naActive ? ' is-active' : ''}"
+    role="radio" aria-checked="${naActive}"
+    data-metric="${metricId}" data-criterion="${criterionId}" data-val="na"
+    aria-label="Not applicable">N/A</span></div>`;
+}
+
+/** Validates Section D: D1/D2 set, distinct, and all non-locked BWM rows answered. */
+function validateSectionD() {
+  const d3El = document.getElementById('d3-matrix');
+  const d4El = document.getElementById('d4-matrix');
+
+  // Matrices not yet rendered by Prompt 4
+  if (!d3El || !d3El.innerHTML.trim()) return false;
+  if (!d4El || !d4El.innerHTML.trim()) return false;
+
+  if (!surveyState.d1_best_criterion || !surveyState.d2_worst_criterion) return false;
+  if (surveyState.d1_best_criterion === surveyState.d2_worst_criterion) return false;
+
+  const bestId  = normalizeCriterionId(surveyState.d1_best_criterion);
+  const worstId = normalizeCriterionId(surveyState.d2_worst_criterion);
+  const d3Obj   = surveyState.d3_best_to_others  || {};
+  const d4Obj   = surveyState.d4_others_to_worst || {};
+
+  const d3ok = CRITERIA.filter(c => c.id !== bestId).every(c  => d3Obj[c.id]  != null);
+  const d4ok = CRITERIA.filter(c => c.id !== worstId).every(c => d4Obj[c.id] != null);
+
+  return d3ok && d4ok;
+}
+
+/** Validates Section E: all 4 metrics × 8 criteria = 32 cells answered (N/A counts). */
+function validateSectionE() {
+  const ratings = surveyState.e_metric_ratings;
+  if (!ratings) return false;
+  return METRICS.every(m =>
+    CRITERIA.every(c => {
+      const val = ratings[m.id] && ratings[m.id][c.id];
+      return val !== null && val !== undefined;
+    })
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   13. VALIDATION — section-level and full-submission
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** Returns true when all required questions in the active section are answered. */
+function validateCurrentSection() {
+  const activeSlide = document.querySelector('.section-slide.is-active');
+  if (!activeSlide) return true;
+
+  // Dispatch to specialist validators for complex sections
+  if (activeSlide.id === 'screen-d') return validateSectionD();
+  if (activeSlide.id === 'screen-e') return validateSectionE();
+
+  const requiredQs = activeSlide.dataset.requiredQuestions;
+  if (!requiredQs) return true;
+
+  return requiredQs.split(',').map(s => s.trim()).every(qId => {
+    const stateKey = STATE_KEY_MAP[qId];
+    if (!stateKey) return true;                // unknown id: do not block
+    return surveyState[stateKey] !== null;
+  });
+}
+
+/** Returns true when every required field in surveyState is non-null. */
+function validateFullSubmission() {
+  const required = [
+    'role', 'experience_years', 'industry', 'region',
+    'lifecycle_stage', 'funding_raised', 'employee_count',
+    'b1_primary_metric', 'b2_nsm_familiarity', 'b3_nsm_defined', 'b4_nsm_revised',
+    'b5_okr_familiarity', 'b6_okr_use', 'b7_experiments', 'b8_data_driven',
+    'c1_value_alignment', 'c2_measurability', 'c3_actionability', 'c4_predictive_power',
+    'c5_team_alignment', 'c6_gaming_resistance', 'c7_experiment_sensitivity', 'c8_strategic_fit',
+    'd1_best_criterion', 'd2_worst_criterion', 'd3_best_to_others', 'd4_others_to_worst',
+    'e_metric_ratings', 'f1_selection_method', 'f2_changed_nsm',
+  ];
+  return required.every(k => surveyState[k] !== null);
+}
+
+/** Enables or disables #btn-next based on whether the current section is complete. */
+function updateNextButton() {
+  const btnNext = document.getElementById('btn-next');
+  if (!btnNext) return;
+  const valid = validateCurrentSection();
+  btnNext.disabled = !valid;
+  btnNext.setAttribute('aria-disabled', valid ? 'false' : 'true');
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   14. D1 / D2 MUTUAL EXCLUSION
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** Prevents the same criterion being selected as both Best (D1) and Worst (D2). */
+function syncD1D2Exclusion() {
+  const d1Val = surveyState.d1_best_criterion;
+  let   d2Val = surveyState.d2_worst_criterion;  // let — may be cleared below
+
+  // Mark matching D2 option as excluded; clear it if it was selected
+  document.querySelectorAll('.pill-option[data-group="d2"]').forEach(p => {
+    const exclude = d1Val !== null && p.dataset.value === d1Val;
+    p.classList.toggle('is-excluded', exclude);
+    p.setAttribute('aria-disabled', exclude ? 'true' : 'false');
+    p.style.opacity = exclude ? '0.38' : '';
+    p.style.cursor  = exclude ? 'not-allowed' : '';
+    if (exclude && p.classList.contains('is-selected')) {
+      p.classList.remove('is-selected');
+      p.setAttribute('aria-checked', 'false');
+      surveyState.d2_worst_criterion = null;
+      d2Val = null;                              // propagate to D1 pass
+    }
+  });
+
+  // Mark matching D1 option as excluded using the (possibly updated) d2Val
+  document.querySelectorAll('.pill-option[data-group="d1"]').forEach(p => {
+    const exclude = d2Val !== null && p.dataset.value === d2Val;
+    p.classList.toggle('is-excluded', exclude);
+    p.setAttribute('aria-disabled', exclude ? 'true' : 'false');
+    p.style.opacity = exclude ? '0.38' : '';
+    p.style.cursor  = exclude ? 'not-allowed' : '';
+  });
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   15. INPUT HANDLERS — delegated on document
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** Handles pill-option and likert-btn clicks via event delegation. */
+document.addEventListener('click', e => {
+
+  /* ── Pill option ── */
+  const pill = e.target.closest('.pill-option');
+  if (pill) {
+    if (pill.classList.contains('is-excluded')) return;   // D1/D2 conflict guard
+
+    const group = pill.dataset.group;
+    const value = pill.dataset.value;
+    if (!group || !value) return;
+
+    // Deselect all siblings in this group
+    document.querySelectorAll(`.pill-option[data-group="${group}"]`).forEach(p => {
+      p.classList.remove('is-selected');
+      p.setAttribute('aria-checked', 'false');
+    });
+
+    // Mark this pill as selected
+    pill.classList.add('is-selected');
+    pill.setAttribute('aria-checked', 'true');
+
+    // Write value to surveyState
+    const stateKey = STATE_KEY_MAP[group] || group;
+    surveyState[stateKey] = value;
+
+    // Show/hide "Other" free-text wrap for this group
+    const otherWrap = document.querySelector(`.conditional-wrap[data-other-for="${group}"]`);
+    if (otherWrap) {
+      otherWrap.classList.toggle('is-visible', pill.dataset.hasOther === 'true');
+    }
+
+    // Toggle any data-triggers targets (e.g., F2 "Yes" → show F2a)
+    document.querySelectorAll(`.pill-option[data-group="${group}"][data-triggers]`).forEach(p => {
+      const target = document.getElementById(p.dataset.triggers);
+      if (target) target.classList.toggle('is-visible', p === pill);
+    });
+
+    // D1/D2 mutual-exclusion sync and BWM matrix re-render stubs
+    if (group === 'd1' || group === 'd2') {
+      syncD1D2Exclusion();
+      renderSectionD();
+    }
+
+    updateNextButton();
+    return;
+  }
+
+  /* ── Likert button ── */
+  const likert = e.target.closest('.likert-btn');
+  if (likert) {
+    const group = likert.dataset.group;
+    const value = parseInt(likert.dataset.value, 10);
+    if (!group || isNaN(value)) return;
+
+    document.querySelectorAll(`.likert-btn[data-group="${group}"]`).forEach(b =>
+      b.classList.remove('is-selected')
+    );
+    likert.classList.add('is-selected');
+
+    const stateKey = STATE_KEY_MAP[group] || group;
+    surveyState[stateKey] = value;
+
+    updateNextButton();
+    return;
+  }
+
+  /* ── BWM cell (D3 / D4) ── */
+  const bwmCell = e.target.closest('.bwm-cell');
+  if (bwmCell && !bwmCell.disabled) {
+    const table       = bwmCell.dataset.table;
+    const criterionId = bwmCell.dataset.criterion;
+    const val         = parseInt(bwmCell.dataset.val, 10);
+    if (!table || !criterionId || isNaN(val)) return;
+
+    const stateKey = table === 'd3' ? 'd3_best_to_others' : 'd4_others_to_worst';
+    if (!surveyState[stateKey]) surveyState[stateKey] = {};
+
+    // Toggle: clicking the already-selected cell clears it
+    surveyState[stateKey][criterionId] =
+      surveyState[stateKey][criterionId] === val ? null : val;
+
+    renderSectionD();
+    updateNextButton();
+    return;
+  }
+
+  /* ── Dot-rating dot or N/A (Section E — TOPSIS) ── */
+  const dot = e.target.closest('.dot-rating__dot, .dot-rating__na');
+  if (dot) {
+    const metricId    = dot.dataset.metric;
+    const criterionId = dot.dataset.criterion;
+    const rawVal      = dot.dataset.val;
+    if (!metricId || !criterionId || rawVal === undefined) return;
+
+    const val = rawVal === 'na' ? 'na' : parseInt(rawVal, 10);
+
+    if (!surveyState.e_metric_ratings) surveyState.e_metric_ratings = {};
+    if (!surveyState.e_metric_ratings[metricId]) surveyState.e_metric_ratings[metricId] = {};
+
+    // Toggle: clicking the already-active value clears it
+    surveyState.e_metric_ratings[metricId][criterionId] =
+      surveyState.e_metric_ratings[metricId][criterionId] === val ? null : val;
+
+    renderSectionE();
+    updateNextButton();
+    return;
+  }
+});
+
+/** Handles text input and textarea value changes via event delegation. */
+document.addEventListener('input', e => {
+
+  /* ── "Other" free-text inputs (data-other-input) ── */
+  if (e.target.dataset.otherInput) {
+    const group    = e.target.dataset.otherInput;
+    const stateKey = STATE_KEY_MAP[group] || group;
+    // Revert to the sentinel string if the field is cleared while "other" is selected
+    surveyState[stateKey] = e.target.value.trim() || 'other';
+    updateNextButton();
+    return;
+  }
+
+  /* ── Regular text inputs with data-question ── */
+  if (e.target.matches('.text-input') && e.target.dataset.question) {
+    const stateKey = STATE_KEY_MAP[e.target.dataset.question] || e.target.dataset.question;
+    surveyState[stateKey] = e.target.value.trim() || null;
+    updateNextButton();
+    return;
+  }
+
+  /* ── Textareas with data-question and a char counter ── */
+  if (e.target.matches('.text-area') && e.target.dataset.question) {
+    const stateKey = STATE_KEY_MAP[e.target.dataset.question] || e.target.dataset.question;
+    surveyState[stateKey] = e.target.value.trim() || null;
+
+    // Update the .char-counter sibling inside the same .q-card
+    const card    = e.target.closest('.q-card');
+    const counter = card ? card.querySelector('.char-counter') : null;
+    if (counter) {
+      const max = parseInt(e.target.getAttribute('maxlength'), 10) || 500;
+      const len = e.target.value.length;
+      counter.textContent = `${len} / ${max}`;
+      counter.classList.toggle('is-near-limit', len > 0 && len / max >= 0.8 && len < max);
+      counter.classList.toggle('is-at-limit',   len >= max);
+    }
+
+    updateNextButton();
+  }
+});
+
+/* ════════════════════════════════════════════════════════════════════════════
+   15b. KEYBOARD NAVIGATION — BWM row arrow keys
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** Left/Right arrow moves focus between enabled cells in the same BWM row. */
+document.addEventListener('keydown', e => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  const cell = e.target.closest('.bwm-cell');
+  if (!cell || cell.disabled) return;
+  e.preventDefault();
+  const row   = cell.closest('tr');
+  const cells = [...row.querySelectorAll('.bwm-cell:not([disabled])')];
+  const idx   = cells.indexOf(cell);
+  if (idx === -1) return;
+  const next  = e.key === 'ArrowRight' ? cells[idx + 1] : cells[idx - 1];
+  if (next) next.focus();
+});
+
+/* ════════════════════════════════════════════════════════════════════════════
+   16. SUPABASE SUBMISSION
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** Initializes the Supabase client only when real config values are present. */
+function initSupabase() {
+  if (
+    CONFIG.SUPABASE_URL      !== 'YOUR_SUPABASE_URL' &&
+    CONFIG.SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY'
+  ) {
+    dbClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  }
+}
+
+/** Validates, logs, and submits surveyState; routes to thank-you or error screen. */
+async function submitSurvey() {
+  if (!validateFullSubmission()) {
+    console.warn('[NSM Survey] Submission blocked — one or more required fields are null.');
+    return;
+  }
+
+  console.log('[NSM Survey] Submitting:', surveyState);
+
+  if (!dbClient) {
+    // Dev mode: Supabase not configured — simulate a successful submission
+    console.warn('[NSM Survey] Supabase not configured — skipping DB insert (dev mode).');
+    goToScreen(SCREEN_ORDER.indexOf('screen-thankyou'), 'forward');
+    return;
+  }
+
+  const { error } = await dbClient.from('survey_responses').insert([surveyState]);
+
+  if (error) {
+    showErrorScreen(error.message);
+    return;
+  }
+
+  goToScreen(SCREEN_ORDER.indexOf('screen-thankyou'), 'forward');
+}
+
+/** Activates the error screen with the failure message while preserving all answers in memory. */
+function showErrorScreen(msg) {
+  const errorEl   = document.getElementById('screen-error');
+  const errorText = errorEl.querySelector('.error-banner__text');
+
+  if (errorText) {
+    errorText.innerHTML =
+      'Something went wrong while saving your response — most likely a temporary ' +
+      'network issue. <strong>Your answers have been preserved.</strong> ' +
+      'Click "Try again" below and they will be resubmitted automatically.' +
+      (msg
+        ? `<br/><small style="color:var(--color-text-faint);margin-top:6px;display:block">${msg}</small>`
+        : '');
+  }
+
+  // Deactivate the current survey slide without animation
+  const currentEl = document.getElementById(SCREEN_ORDER[currentScreenIndex]);
+  if (currentEl) currentEl.classList.remove('is-active');
+
+  errorEl.classList.add('is-active');
+
+  // Hide chrome elements that should not appear on the error screen
+  document.getElementById('progress-strip').classList.add('is-hidden');
+  document.getElementById('nav-bar').classList.add('is-hidden');
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   17. INITIALIZATION
+   ════════════════════════════════════════════════════════════════════════════ */
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  initSupabase();
+
+  /* ── Begin Survey button on the landing screen ── */
+  document.getElementById('btn-begin').addEventListener('click', () => {
+    goToScreen(1, 'forward');
+  });
+
+  /* ── Back button — navigate to the previous section ── */
+  document.getElementById('btn-back').addEventListener('click', () => {
+    goToScreen(currentScreenIndex - 1, 'back');
+  });
+
+  /* ── Next / Submit button ── */
+  document.getElementById('btn-next').addEventListener('click', () => {
+    if (!validateCurrentSection()) return;
+    // On Section F the button submits instead of advancing
+    if (currentScreenIndex === SCREEN_ORDER.indexOf('screen-f')) {
+      submitSurvey();
+      return;
+    }
+    goToScreen(currentScreenIndex + 1, 'forward');
+  });
+
+  /* ── Retry after submission failure ── */
+  document.getElementById('btn-retry').addEventListener('click', submitSurvey);
+
+  /* ── Copy survey URL to clipboard ── */
+  document.getElementById('btn-copy-link').addEventListener('click', function () {
+    const btn        = this;
+    const savedHTML  = btn.innerHTML;
+    navigator.clipboard.writeText(window.location.href)
+      .then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.innerHTML = savedHTML; }, 2000);
+      })
+      .catch(() => {
+        btn.textContent = 'Copy failed';
+        setTimeout(() => { btn.innerHTML = savedHTML; }, 2000);
+      });
+  });
+
+  /* ── Dark / light theme toggle ── */
+  document.querySelector('[data-theme-toggle]').addEventListener('click', function () {
+    const html   = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    this.setAttribute('aria-label', isDark ? 'Toggle dark mode' : 'Toggle light mode');
+  });
+
+  /* ── Initial UI state ── */
+  updateProgressBar();
+  updateNavBar();
+});
+</script>
+
+</body>
+</html>
