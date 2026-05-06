@@ -2745,40 +2745,57 @@ function renderSectionD() {
     `<p class="q-hint" style="padding:var(--space-3) 0;color:var(--color-text-faint)">${msg}</p>`;
 
   d3El.innerHTML = bestCrit
-    ? buildBwmTable('d3', bestCrit,  surveyState.d3_best_to_others  || {})
-    : placeholder('Select your most important criterion above to unlock this table.');
+    ? buildBwmTable('d3-matrix', bestCrit.id,  surveyState.d3_best_to_others  || {}, 'd3')
+    : placeholder('Select your most important criterion above to unlock this comparison table.');
 
   d4El.innerHTML = worstCrit
-    ? buildBwmTable('d4', worstCrit, surveyState.d4_others_to_worst || {})
-    : placeholder('Select your least important criterion above to unlock this table.');
+    ? buildBwmTable('d4-matrix', worstCrit.id, surveyState.d4_others_to_worst || {}, 'd4')
+    : placeholder('Select your least important criterion above to unlock this comparison table.');
 }
 
-/** Builds an 8×9 BWM table as an HTML string; lockedCrit row is pre-filled with 1 and disabled. */
-function buildBwmTable(tableId, lockedCrit, saved) {
+/** Builds an 8×9 BWM table as an HTML string; the locked criterion row is pre-filled with 1. */
+function buildBwmTable(containerId, lockedCriterionId, savedValues, tableId) {
+  const BWM_SCALE = {
+    1: 'Equally important',
+    2: 'Slightly more important',
+    3: 'Moderately more important',
+    4: 'More important',
+    5: 'Strongly more important',
+    6: 'Very strongly more important',
+    7: 'Extremely more important',
+    8: 'Overwhelmingly more important',
+    9: 'Absolutely more important',
+  };
+
+  const lockedCrit = CRITERIA.find(c => c.id === lockedCriterionId);
+  if (!lockedCrit) return '';
+
   const isD3    = tableId === 'd3';
   const context = isD3
-    ? `How many times more important is <strong>${lockedCrit.label}</strong> (Best) compared to each other criterion? Scale: 1 = equally important · 9 = absolutely more important.`
-    : `How many times more important is each criterion compared to <strong>${lockedCrit.label}</strong> (Worst)? Scale: 1 = equally important · 9 = absolutely more important.`;
+    ? `How much more important is <strong>${lockedCrit.label}</strong> compared to each criterion below?`
+    : `How much more important is each criterion below compared to <strong>${lockedCrit.label}</strong>?`;
 
   const headers = [1,2,3,4,5,6,7,8,9].map(n => `<th scope="col">${n}</th>`).join('');
 
   const rows = CRITERIA.map(crit => {
-    const isLocked = crit.id === lockedCrit.id;
-    const savedVal = saved[crit.id];
+    const isLocked = crit.id === lockedCriterionId;
+    const savedVal = savedValues[crit.id];
     const label    = isLocked
       ? `${crit.label}&nbsp;<span aria-hidden="true" style="color:var(--color-accent);font-size:0.7em">★</span>`
       : crit.label;
 
     const cells = [1,2,3,4,5,6,7,8,9].map(n => {
-      const active = isLocked ? n === 1 : savedVal === n;
-      const cls    = `bwm-cell${active ? ' is-selected' : ''}`;
       if (isLocked) {
-        return `<td><button class="${cls}" type="button" disabled
-          aria-pressed="${active}" aria-label="${n}">${n}</button></td>`;
+        if (n === 1) {
+          return `<td><button class="bwm-cell is-selected" type="button" disabled
+            aria-label="1: Equally important">1</button></td>`;
+        }
+        return `<td><button class="bwm-cell" type="button" disabled aria-hidden="true"></button></td>`;
       }
-      return `<td><button class="${cls}" type="button"
+      const active = savedVal === n;
+      return `<td><button class="bwm-cell${active ? ' is-selected' : ''}" type="button"
         data-table="${tableId}" data-criterion="${crit.id}" data-val="${n}"
-        aria-pressed="${active}" aria-label="Rate ${n}">${n}</button></td>`;
+        aria-pressed="${active}" aria-label="${n}: ${BWM_SCALE[n]}">${n}</button></td>`;
     }).join('');
 
     return `<tr${isLocked ? ' class="is-locked"' : ''}><td>${label}</td>${cells}</tr>`;
@@ -2805,10 +2822,19 @@ function renderSectionE() {
   const mobileEl  = document.getElementById('topsis-mobile');
   if (!desktopEl || !mobileEl) return;
 
-  const ratings = surveyState.e_metric_ratings || {};
+  // Explicitly pre-populate all keys so buildDotRating always receives a defined value
+  if (!surveyState.e_metric_ratings) {
+    const blank = () => ({ valuealignment: null, measurability: null, actionability: null,
+      predictivepower: null, teamalignment: null, gamingresistance: null,
+      experimentsensitivity: null, strategicfit: null });
+    surveyState.e_metric_ratings = { dau: blank(), retention: blank(), mrr: blank(), clv: blank() };
+  }
+  const ratings = surveyState.e_metric_ratings;
+
+  const ABBR = ['Val.Align.', 'Measur.', 'Action.', 'Predict.', 'Team Al.', 'Gaming', 'Exp.Sens.', 'Strat.Fit'];
 
   // Desktop table
-  const ths = CRITERIA.map(c => `<th scope="col">${c.label}</th>`).join('');
+  const ths = CRITERIA.map((c, i) => `<th scope="col">${ABBR[i]}</th>`).join('');
   const trs = METRICS.map(m => {
     const tds = CRITERIA.map(c => {
       const val = ratings[m.id]?.[c.id];
@@ -2837,22 +2863,23 @@ function renderSectionE() {
   ).join('');
 }
 
-/** Returns a dot-rating widget (5 filled dots + N/A toggle) as an HTML string. */
+/** Returns a dot-rating widget (5 dot buttons + N/A button) as an HTML string. */
 function buildDotRating(metricId, criterionId, currentVal) {
+  const metricLabel    = (METRICS.find(m => m.id === metricId)    || {}).label || metricId;
+  const criterionLabel = (CRITERIA.find(c => c.id === criterionId) || {}).label || criterionId;
+
   const dots = [1,2,3,4,5].map(n => {
     const active = currentVal === n;
-    return `<span class="dot-rating__dot${active ? ' is-active' : ''}"
-      role="radio" aria-checked="${active}" tabindex="${active ? '0' : '-1'}"
+    return `<button class="dot-rating__dot${active ? ' is-active' : ''}" type="button"
       data-metric="${metricId}" data-criterion="${criterionId}" data-val="${n}"
-      aria-label="Rate ${n}"></span>`;
+      aria-label="Rate ${criterionLabel} for ${metricLabel}: ${n} out of 5"></button>`;
   }).join('');
 
   const naActive = currentVal === 'na';
-  return `<div class="dot-rating" role="radiogroup" aria-label="${metricId} ${criterionId}">${dots}<span
-    class="dot-rating__na${naActive ? ' is-active' : ''}"
-    role="radio" aria-checked="${naActive}"
+  return `<div class="dot-rating" data-metric="${metricId}" data-criterion="${criterionId}">${dots}<button
+    class="dot-rating__na${naActive ? ' is-active' : ''}" type="button"
     data-metric="${metricId}" data-criterion="${criterionId}" data-val="na"
-    aria-label="Not applicable">N/A</span></div>`;
+    aria-label="Mark ${criterionLabel} as not applicable for ${metricLabel}">N/A</button></div>`;
 }
 
 /** Validates Section D: D1/D2 set, distinct, and all non-locked BWM rows answered. */
