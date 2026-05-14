@@ -21,6 +21,7 @@
     b1_primary_metric int, b2_nsm_familiarity text, b3_nsm_defined int,
     b4_nsm_revised int, b5_okr_familiarity text, b6_okr_use int,
     b7_experiments int, b8_data_driven int, b9_nsm_name text,
+    b_business_model text, b_growth_stage text,
     c1_value_alignment int, c2_measurability int, c3_actionability int,
     c4_predictive_power int, c5_team_alignment int, c6_gaming_resistance int,
     c7_experiment_sensitivity int, c8_strategic_fit int,
@@ -1692,7 +1693,7 @@ input, textarea, select { font-family: var(--font-sans); }
       <div class="section-slide" id="screen-b"
            data-section-index="2"
            data-section-title="Growth Practices"
-           data-required-questions="b1,b2,b3,b4,b5,b6,b7,b8">
+           data-required-questions="b1,b2,b3,b4,b5,b6,b7,b8,b_business_model,b_growth_stage">
 
         <div class="section-content">
           <header class="section-header">
@@ -1868,6 +1869,43 @@ input, textarea, select { font-family: var(--font-sans); }
             <div class="text-input-wrap">
               <input type="text" class="text-input" id="b9-input" data-question="b9"
                      placeholder="Name the metric your organization uses…" />
+            </div>
+          </div>
+
+          <!-- B10 ─ Business model (single-choice + Other free text) -->
+          <div class="q-card" id="q-b_business_model">
+            <span class="q-label" id="b_business_model-label">
+              <span class="q-num">B10.</span>
+              What best describes your company's primary business model?
+            </span>
+            <div class="pill-group" role="radiogroup" aria-labelledby="b_business_model-label"
+                 data-question="b_business_model" data-required="true">
+              <button type="button" class="pill-option" data-value="saas"        data-group="b_business_model" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>SaaS / Subscription</span></button>
+              <button type="button" class="pill-option" data-value="marketplace" data-group="b_business_model" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Marketplace / Platform</span></button>
+              <button type="button" class="pill-option" data-value="b2b"         data-group="b_business_model" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>B2B Enterprise / Professional Services</span></button>
+              <button type="button" class="pill-option" data-value="ecommerce"   data-group="b_business_model" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>E-commerce / Transactional</span></button>
+              <button type="button" class="pill-option" data-value="other"       data-group="b_business_model" data-has-other="true" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Other</span></button>
+              <div class="conditional-wrap" data-other-for="b_business_model">
+                <div class="text-input-wrap mt-2">
+                  <label class="sr-only" for="b_business_model-other">Please specify your business model</label>
+                  <input type="text" class="text-input" id="b_business_model-other" data-other-input="b_business_model" placeholder="Please specify your business model…" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- B11 ─ Growth stage (single-choice) -->
+          <div class="q-card" id="q-b_growth_stage">
+            <span class="q-label" id="b_growth_stage-label">
+              <span class="q-num">B11.</span>
+              What is your company's current growth stage?
+            </span>
+            <div class="pill-group" role="radiogroup" aria-labelledby="b_growth_stage-label"
+                 data-question="b_growth_stage" data-required="true">
+              <button type="button" class="pill-option" data-value="pre_seed" data-group="b_growth_stage" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Pre-seed / Idea stage</span></button>
+              <button type="button" class="pill-option" data-value="seed"     data-group="b_growth_stage" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Seed / Early traction</span></button>
+              <button type="button" class="pill-option" data-value="series_a" data-group="b_growth_stage" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Series A / Growth stage</span></button>
+              <button type="button" class="pill-option" data-value="series_b" data-group="b_growth_stage" role="radio" aria-checked="false"><span class="pill-dot" aria-hidden="true"></span><span>Series B+ / Scaling</span></button>
             </div>
           </div>
 
@@ -2439,6 +2477,7 @@ input, textarea, select { font-family: var(--font-sans); }
     b1_primary_metric int, b2_nsm_familiarity text, b3_nsm_defined int,
     b4_nsm_revised int, b5_okr_familiarity text, b6_okr_use int,
     b7_experiments int, b8_data_driven int, b9_nsm_name text,
+    b_business_model text, b_growth_stage text,
     c1_value_alignment int, c2_measurability int, c3_actionability int,
     c4_predictive_power int, c5_team_alignment int, c6_gaming_resistance int,
     c7_experiment_sensitivity int, c8_strategic_fit int,
@@ -2489,6 +2528,7 @@ const surveyState = {
   b1_primary_metric: null, b2_nsm_familiarity: null, b3_nsm_defined: null,
   b4_nsm_revised: null,    b5_okr_familiarity: null, b6_okr_use: null,
   b7_experiments: null,    b8_data_driven: null,     b9_nsm_name: null,
+  b_business_model: null,  b_growth_stage: null,
   // Section C
   c1_value_alignment: null,       c2_measurability: null,
   c3_actionability: null,         c4_predictive_power: null,
@@ -2520,10 +2560,12 @@ const CRITERIA = [
 ];
 
 const METRICS = [
-  { id: 'dau',       label: 'Daily / Weekly Active Users (DAU/WAU)' },
-  { id: 'retention', label: 'User Retention Rate (e.g., Day-30)' },
-  { id: 'mrr',       label: 'Monthly Recurring Revenue (MRR)' },
-  { id: 'clv',       label: 'Customer Lifetime Value (CLV/LTV)' },
+  { id: 'dau',             label: 'Daily / Weekly Active Users (DAU/WAU)' },
+  { id: 'retention',       label: 'User Retention Rate (e.g., Day-30)' },
+  { id: 'mrr',             label: 'Monthly Recurring Revenue (MRR)' },
+  { id: 'clv',             label: 'Customer Lifetime Value (CLV/LTV)' },
+  { id: 'nps',             label: 'Net Promoter Score (NPS)' },
+  { id: 'featureadoption', label: 'Feature Adoption Rate' },
 ];
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -2565,6 +2607,7 @@ const STATE_KEY_MAP = {
   b1: 'b1_primary_metric',    b2: 'b2_nsm_familiarity',        b3: 'b3_nsm_defined',
   b4: 'b4_nsm_revised',       b5: 'b5_okr_familiarity',        b6: 'b6_okr_use',
   b7: 'b7_experiments',       b8: 'b8_data_driven',            b9: 'b9_nsm_name',
+  b_business_model: 'b_business_model',                       b_growth_stage: 'b_growth_stage',
   c1: 'c1_value_alignment',   c2: 'c2_measurability',          c3: 'c3_actionability',
   c4: 'c4_predictive_power',  c5: 'c5_team_alignment',         c6: 'c6_gaming_resistance',
   c7: 'c7_experiment_sensitivity',                             c8: 'c8_strategic_fit',
@@ -2826,7 +2869,7 @@ function renderSectionE() {
     const blank = () => ({ valuealignment: null, measurability: null, actionability: null,
       predictivepower: null, teamalignment: null, gamingresistance: null,
       experimentsensitivity: null, strategicfit: null });
-    surveyState.e_metric_ratings = { dau: blank(), retention: blank(), mrr: blank(), clv: blank() };
+    surveyState.e_metric_ratings = { dau: blank(), retention: blank(), mrr: blank(), clv: blank(), nps: blank(), featureadoption: blank() };
   }
   const ratings = surveyState.e_metric_ratings;
 
@@ -2946,6 +2989,7 @@ function validateFullSubmission() {
     'lifecycle_stage', 'funding_raised', 'employee_count',
     'b1_primary_metric', 'b2_nsm_familiarity', 'b3_nsm_defined', 'b4_nsm_revised',
     'b5_okr_familiarity', 'b6_okr_use', 'b7_experiments', 'b8_data_driven',
+    'b_business_model', 'b_growth_stage',
     'c1_value_alignment', 'c2_measurability', 'c3_actionability', 'c4_predictive_power',
     'c5_team_alignment', 'c6_gaming_resistance', 'c7_experiment_sensitivity', 'c8_strategic_fit',
     'd1_best_criterion', 'd2_worst_criterion', 'd3_best_to_others', 'd4_others_to_worst',
