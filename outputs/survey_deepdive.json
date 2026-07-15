@@ -1,0 +1,214 @@
+{
+  "n": 30,
+  "profile": {
+    "role": {
+      "ceo": 4,
+      "marketing_manager": 5,
+      "founder": 5,
+      "product_manager": 4,
+      "data_analytics": 3,
+      "operations": 3,
+      "Business Strategy Consultant": 1,
+      "growth_manager": 2,
+      "Sales / Business Development Manager": 1,
+      "CTO / Technical Lead": 1,
+      "Customer Success Manager": 1
+    },
+    "industry": {
+      "Beauty and cosmetics": 1,
+      "ecommerce": 4,
+      "saas": 7,
+      "healthtech": 1,
+      "Logistics/Delivery/Mobility": 1,
+      "media": 2,
+      "EdTech / Online Learning": 1,
+      "HRTech / Recruitment": 1,
+      "ClimateTech / Sustainability": 1,
+      "Consulting / Professional Services": 1,
+      "Travel / Hospitality": 1,
+      "consumer_app": 1,
+      "FoodTech / Food delivery": 1,
+      "AI / Productivity Software": 1,
+      "B2B Marketplace / Platform": 1,
+      "LegalTech / B2B Software": 1,
+      "fintech": 1,
+      "HealthTech / Digital Healthcare": 1,
+      "Gaming / Entertainment": 1,
+      "Real Estate / PropTech": 1
+    },
+    "region": {
+      "italy": 11,
+      "mea": 4,
+      "western_europe": 9,
+      "north_america": 2,
+      "latin_america": 1,
+      "apac": 1,
+      "Middle East": 1,
+      "eastern_europe": 1
+    },
+    "lifecycle_stage": {
+      "seed": 8,
+      "early_growth": 15,
+      "mature": 3,
+      "scale_up": 3,
+      "pre_seed": 1
+    },
+    "experience_years": {
+      "lt2": 1,
+      "2to5": 11,
+      "5to10": 15,
+      "gt10": 3
+    },
+    "bm_archetype": {
+      "NA": 1,
+      "BM2": 12,
+      "BM1": 12,
+      "BM3": 4,
+      "OTHER": 1
+    }
+  },
+  "direct_ratings": {
+    "c1_value_alignment": {
+      "mean": 6.23,
+      "sd": 0.62,
+      "n": 30
+    },
+    "c2_measurability": {
+      "mean": 6.1,
+      "sd": 0.91,
+      "n": 30
+    },
+    "c3_actionability": {
+      "mean": 5.83,
+      "sd": 0.69,
+      "n": 30
+    },
+    "c4_predictive_power": {
+      "mean": 5.37,
+      "sd": 0.87,
+      "n": 30
+    },
+    "c5_team_alignment": {
+      "mean": 4.83,
+      "sd": 1.0,
+      "n": 30
+    },
+    "c6_gaming_resistance": {
+      "mean": 4.6,
+      "sd": 1.11,
+      "n": 30
+    },
+    "c7_experiment_sensitivity": {
+      "mean": 4.17,
+      "sd": 1.34,
+      "n": 30
+    },
+    "c8_strategic_fit": {
+      "mean": 6.2,
+      "sd": 0.65,
+      "n": 30
+    }
+  },
+  "best_freq": {
+    "value_alignment": 8,
+    "strategic_fit": 3,
+    "measurability": 5,
+    "predictive_power": 5,
+    "actionability": 8,
+    "gaming_resistance": 1
+  },
+  "worst_freq": {
+    "predictive_power": 2,
+    "experiment_sensitivity": 16,
+    "gaming_resistance": 10,
+    "team_alignment": 2
+  },
+  "survey_matrix": {
+    "DAU": [
+      3.29,
+      4.79,
+      3.71,
+      3.11,
+      3.36,
+      2.39,
+      4.14,
+      3.14
+    ],
+    "Retention": [
+      4.67,
+      4.13,
+      3.6,
+      4.77,
+      4.0,
+      3.93,
+      2.6,
+      4.7
+    ],
+    "MRR": [
+      4.11,
+      4.72,
+      2.83,
+      4.44,
+      3.67,
+      4.67,
+      1.72,
+      4.5
+    ],
+    "NPS": [
+      3.31,
+      3.14,
+      2.21,
+      3.1,
+      3.55,
+      2.97,
+      1.52,
+      3.21
+    ],
+    "Feature Adoption": [
+      3.71,
+      4.39,
+      4.14,
+      3.29,
+      3.61,
+      3.18,
+      4.07,
+      3.63
+    ],
+    "CLV": [
+      3.63,
+      3.1,
+      2.47,
+      4.37,
+      3.07,
+      3.83,
+      1.57,
+      3.9
+    ]
+  },
+  "survey_matrix_topsis": {
+    "DAU": {
+      "cc": 0.4554,
+      "rank": 4
+    },
+    "Retention": {
+      "cc": 0.7315,
+      "rank": 1
+    },
+    "MRR": {
+      "cc": 0.5654,
+      "rank": 2
+    },
+    "NPS": {
+      "cc": 0.1034,
+      "rank": 6
+    },
+    "Feature Adoption": {
+      "cc": 0.5597,
+      "rank": 3
+    },
+    "CLV": {
+      "cc": 0.3497,
+      "rank": 5
+    }
+  }
+}

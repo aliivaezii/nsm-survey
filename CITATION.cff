@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this dataset or pipeline, please cite it as below. A journal citation will be added upon publication of the associated manuscript."
+title: "North Star Metric Selection: Survey and Analysis Pipeline"
+type: software
+authors:
+  - family-names: "Vaezi"
+    given-names: "Ali"
+    affiliation: "Politecnico di Torino"
+    email: "ali.vaezi@studenti.polito.it"
+repository-code: "https://github.com/aliivaezii/nsm-survey"
+license: MIT
+keywords:
+  - North Star Metric
+  - multi-criteria decision-making
+  - Best-Worst Method
+  - TOPSIS
+  - startups
